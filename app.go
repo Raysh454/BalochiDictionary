@@ -4,7 +4,10 @@ import (
 	"balochi_dictionary_wails/internal/dictionary"
 	"context"
 	"database/sql"
+	"embed"
 	"encoding/json"
+	"os"
+	"path/filepath"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -13,11 +16,14 @@ import (
 type App struct {
 	ctx context.Context
 	SQLiteSearcher *balochidictionary.SQLiteSearcher
+	assets embed.FS
 }
 
 // NewApp creates a new App application struct
-func NewApp() *App {
-	return &App{}
+func NewApp(assets embed.FS) *App {
+	return &App{
+		assets: assets,
+	}
 }
 
 // startup is called when the app starts. The context is saved
@@ -26,8 +32,41 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
+func (a *App) deployDatabase() (string, error) {
+	const embeddedPath = "internal/dictionary/Database/balochi_dict.db"
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	appDir := filepath.Join(configDir, "BalochiDictionary")
+	os.MkdirAll(appDir, 0755)
+
+	dbPath := filepath.Join(appDir, "balochi_dict.db")
+
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		data, err := a.assets.ReadFile(embeddedPath)
+		if err != nil {
+			return "", err 
+		}
+		err = os.WriteFile(dbPath, data, 0644)
+		if err != nil {
+			return "", err 
+		}
+	}
+
+	return dbPath, nil
+}
+
 func (a *App) initializeDatabase() (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", "./internal/dictionary/Database/balochi_dict.db")
+
+	dbPath, err := a.deployDatabase()
+	if err != nil {
+		return nil, err
+	}
+
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, err
 	}

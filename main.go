@@ -9,11 +9,12 @@ import (
 )
 
 //go:embed all:frontend/dist
+//go:embed internal/dictionary/Database/balochi_dict.db
 var assets embed.FS
 
 func main() {
 	// Create an instance of the app structure
-	app := NewApp()
+	app := NewApp(assets)
 
 	err := app.InitSearcher()
 	if err != nil {
