@@ -68,15 +68,17 @@ The browse feature is for scanning headwords in dictionary order instead of typi
 
 - Intended UX in a tabbed client:
   - **Search tab**: query-driven lookup (current bundled UI behavior).
-  - **Browse tab**: alphabetic list + paging + optional first-letter filter.
-- Default tab behavior: keep **Search** as the default entry view. Browse is an additional navigation mode.
+  - **Browse tab**: alphabetic list + paging with sidebar letter jump.
+  - Letter filtering is controlled only from the sidebar (no top letter dropdown).
+- Default tab behavior: **Browse** is the default entry view.
 
 ### High-level letter filtering / jumping flow
 
-1. Call `GET /api/browse/letters` to render available letter buckets.
+1. Call `GET /api/browse/letters` to render sidebar letters and counts.
 2. When a user picks a letter, call `GET /api/browse` with `letter=<selected>` and `offset=0`.
 3. Use `pagination.nextOffset` / `pagination.hasMore` from each browse response to jump to the next page for the same filter.
 4. Clearing the letter filter means calling `/api/browse` without `letter`.
+5. Expand the selected entry **inline in the list item** (instead of using a separate top selected-entry panel).
 
 ## Browse API
 

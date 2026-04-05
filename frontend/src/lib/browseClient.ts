@@ -64,7 +64,16 @@ export async function browseLetters(): Promise<BrowseLetter[]> {
   }
 
   const parsed = await response.json()
-  return Array.isArray(parsed?.letters) ? parsed.letters : []
+  if (!Array.isArray(parsed?.letters)) {
+    return []
+  }
+
+  return parsed.letters
+    .map((entry: { letter?: string; Letter?: string; count?: number; Count?: number }) => ({
+      letter: entry.letter ?? entry.Letter ?? '',
+      count: entry.count ?? entry.Count ?? 0,
+    }))
+    .filter((entry: BrowseLetter) => entry.letter.length > 0)
 }
 
 export async function browseItemDetail(wordID: number, signal?: AbortSignal): Promise<BrowseItemDetail> {

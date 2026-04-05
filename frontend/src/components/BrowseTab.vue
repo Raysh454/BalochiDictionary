@@ -186,10 +186,6 @@ async function loadBrowseItemDetail(wordID: number) {
   }
 }
 
-function onFilterChange() {
-  void loadBrowse(true)
-}
-
 const letterCounts = computed<Record<string, number>>(() => {
   return data.letters.reduce<Record<string, number>>((counts, item) => {
     counts[item.letter] = item.count
@@ -263,12 +259,6 @@ onBeforeUnmount(() => {
   <div class="browse-layout">
     <section>
       <form class="controls" @submit.prevent="loadBrowse(true)">
-        <select v-model="data.letter" class="input medium" @change="onFilterChange">
-          <option value="">All letters</option>
-          <option v-for="letter in data.letters" :key="letter.letter" :value="letter.letter">
-            {{ letter.letter }} ({{ letter.count }})
-          </option>
-        </select>
         <input v-model.number="data.limit" type="number" class="input short" min="1" max="100" />
         <button class="btn" type="submit">Refresh</button>
       </form>
@@ -279,36 +269,25 @@ onBeforeUnmount(() => {
       <div v-else-if="data.loading">Loading...</div>
       <div v-else-if="data.items.length === 0">No entries</div>
       <div v-else>
-        <div class="card detail-card">
-          <h3>Selected entry</h3>
-          <p v-if="data.selectedWordID === 0">Select an item from the browse list to view definitions.</p>
-          <p v-else-if="data.detailLoading">Loading entry details...</p>
-          <p v-else-if="data.detailError">{{ data.detailError }}</p>
-          <template v-else-if="data.selectedItemDetail">
-            <h4>
-              {{ data.selectedItemDetail.Balochi }} <small>({{ data.selectedItemDetail.Latin }})</small>
-            </h4>
-            <p><strong>Normalized:</strong> {{ data.selectedItemDetail.NormalizedLatin }}</p>
-            <ul v-if="data.selectedItemDetail.Definitions.length > 0">
-              <li v-for="(def, index) in data.selectedItemDetail.Definitions" :key="index">
-                <em>{{ def.PartOfSpeech }}:</em> {{ def.Text }}
-              </li>
-            </ul>
-            <p v-else>No definitions</p>
-          </template>
-        </div>
+        <div v-for="word in data.items" :key="word.WordID" class="card browse-item" :class="{ selected: data.selectedWordID === word.WordID }">
+          <button class="browse-item-trigger" type="button" @click="loadBrowseItemDetail(word.WordID)">
+            <h3>{{ word.Balochi }} <small>({{ word.Latin }})</small></h3>
+            <p><strong>Normalized:</strong> {{ word.NormalizedLatin }}</p>
+          </button>
 
-        <button
-          v-for="word in data.items"
-          :key="word.WordID"
-          class="card browse-item"
-          type="button"
-          :class="{ selected: data.selectedWordID === word.WordID }"
-          @click="loadBrowseItemDetail(word.WordID)"
-        >
-          <h3>{{ word.Balochi }} <small>({{ word.Latin }})</small></h3>
-          <p><strong>Normalized:</strong> {{ word.NormalizedLatin }}</p>
-        </button>
+          <div v-if="data.selectedWordID === word.WordID" class="inline-detail">
+            <p v-if="data.detailLoading">Loading entry details...</p>
+            <p v-else-if="data.detailError">{{ data.detailError }}</p>
+            <template v-else-if="data.selectedItemDetail">
+              <ul v-if="data.selectedItemDetail.Definitions.length > 0">
+                <li v-for="(def, index) in data.selectedItemDetail.Definitions" :key="index">
+                  <em>{{ def.PartOfSpeech }}:</em> {{ def.Text }}
+                </li>
+              </ul>
+              <p v-else>No definitions</p>
+            </template>
+          </div>
+        </div>
         <div ref="loadMoreSentinel" class="load-more-sentinel" aria-hidden="true"></div>
         <button v-if="data.hasMore" class="btn load-more" type="button" :disabled="data.loadingMore" @click="loadBrowse(false)">
           {{ data.loadingMore ? 'Loading...' : 'Load more' }}
@@ -387,33 +366,40 @@ onBeforeUnmount(() => {
   margin: 0 0 0.25rem 0;
 }
 
-.detail-card h3 {
-  margin-bottom: 0.5rem;
-}
-
-.detail-card h4 {
-  margin: 0 0 0.25rem 0;
-}
-
-.detail-card ul {
-  margin: 0.5rem 0 0 1rem;
-  padding: 0;
-  list-style-type: disc;
-}
-
-.detail-card em {
-  color: #a0cfff;
-}
-
 .browse-item {
   width: 100%;
   border: 1px solid transparent;
   text-align: left;
+}
+
+.browse-item-trigger {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: inherit;
   cursor: pointer;
+  padding: 0;
 }
 
 .browse-item.selected {
   border-color: #66aaff;
+}
+
+.inline-detail {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #4e5762;
+}
+
+.inline-detail ul {
+  margin: 0.25rem 0 0 1rem;
+  padding: 0;
+  list-style-type: disc;
+}
+
+.inline-detail em {
+  color: #a0cfff;
 }
 
 .load-more {

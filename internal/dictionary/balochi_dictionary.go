@@ -29,8 +29,8 @@ type BrowseRow struct {
 }
 
 type BrowseLetter struct {
-	Letter string
-	Count  int
+	Letter string `json:"letter"`
+	Count  int    `json:"count"`
 }
 
 type SQLiteSearcher struct {
