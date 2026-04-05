@@ -3,6 +3,7 @@ package balochidictionary
 import (
 	"database/sql"
 	"errors"
+	"sort"
 	"strings"
 	"unicode"
 )
@@ -208,7 +209,65 @@ func (s *SQLiteSearcher) loadWordsFromIDs(ids []int) ([]Result, error) {
 		results = append(results, *r)
 	}
 
-	return results, nil
+	return deduplicateNumericVariants(results), nil
+}
+
+func definitionsSignature(definitions []Definition) string {
+	signatures := make([]string, 0, len(definitions))
+	for _, definition := range definitions {
+		signatures = append(signatures, definition.PartOfSpeech+"\x1f"+definition.Text)
+	}
+	sort.Strings(signatures)
+	return strings.Join(signatures, "\x1e")
+}
+
+func isNumericOnly(value string) bool {
+	if value == "" {
+		return false
+	}
+
+	for _, r := range value {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func deduplicateNumericVariants(results []Result) []Result {
+	deduped := make([]Result, 0, len(results))
+	seenCanonicalIndex := make(map[string]int)
+
+	for _, result := range results {
+		key := result.Balochi + "\x1d" + definitionsSignature(result.Definitions)
+		existingIndex, seen := seenCanonicalIndex[key]
+		if !seen {
+			seenCanonicalIndex[key] = len(deduped)
+			deduped = append(deduped, result)
+			continue
+		}
+
+		existing := deduped[existingIndex]
+		existingIsNumeric := isNumericOnly(existing.NormalizedLatin)
+		currentIsNumeric := isNumericOnly(result.NormalizedLatin)
+
+		// Replace a numeric variant with a transliterated variant while preserving rank position.
+		if existingIsNumeric && !currentIsNumeric {
+			deduped[existingIndex] = result
+			continue
+		}
+
+		// Hide extra numeric variants for the same headword+definition signature.
+		if currentIsNumeric {
+			continue
+		}
+
+		// Keep distinct non-numeric transliteration variants visible.
+		deduped = append(deduped, result)
+	}
+
+	return deduped
 }
 
 func (s *SQLiteSearcher) searchWordIds(query string, field string, limit int, options SearchOptions) ([]int, error) {

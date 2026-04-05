@@ -52,6 +52,7 @@ Definition mode now uses a two-stage strategy for better relevance:
 
 1. Whole-word matching and ranking (exact definition matches first, then phrase-leading matches, then other whole-word matches).
 2. If no whole-word results exist, it falls back to broad substring matching.
+3. Numeric transliteration variants (for example `normalized_latin=1`) are deduplicated when an equivalent non-numeric canonical transliteration exists for the same headword+definitions.
 
 For the web API (`/api/search`), you can disable fallback with:
 
