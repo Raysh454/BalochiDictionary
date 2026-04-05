@@ -45,3 +45,18 @@ This repository now includes a `Dockerfile` for Railway deployment of the full w
 3. Deploy.
 
 The dictionary database is shipped as a static read-only SQLite file inside the image (`internal/dictionary/Database/balochi_dict.db`).
+
+## Definition search semantics
+
+Definition mode now uses a two-stage strategy for better relevance:
+
+1. Whole-word matching and ranking (exact definition matches first, then phrase-leading matches, then other whole-word matches).
+2. If no whole-word results exist, it falls back to broad substring matching.
+
+For the web API (`/api/search`), you can disable fallback with:
+
+- `strict_definition=true`
+
+Example:
+
+`/api/search?keyword=water&method=definition&limit=20&strict_definition=true`

@@ -3,23 +3,29 @@ package balochidictionary
 import (
 	"database/sql"
 	"errors"
+	"strings"
+	"unicode"
 )
 
 type Result struct {
-	WordID int
-	Balochi string
-	Latin string
+	WordID          int
+	Balochi         string
+	Latin           string
 	NormalizedLatin string
-	Definitions []Definition
+	Definitions     []Definition
 }
 
 type Definition struct {
 	PartOfSpeech string
-	Text string
+	Text         string
 }
 
 type SQLiteSearcher struct {
 	DB *sql.DB
+}
+
+type SearchOptions struct {
+	StrictDefinition bool
 }
 
 func NewSQLiteSearcher(db *sql.DB) (*SQLiteSearcher, error) {
@@ -32,34 +38,110 @@ func NewSQLiteSearcher(db *sql.DB) (*SQLiteSearcher, error) {
 	}, nil
 }
 
-func (s *SQLiteSearcher) searchWordIds(query string, field string, limit int) (*sql.Rows, error) {
-	var rows *sql.Rows
-	var err error
-
-	switch (field) {
-		case "balochi":
-			rows, err = s.DB.Query("SELECT id FROM words WHERE balochi LIKE ? LIMIT ?", query + "%", limit)
-		case "latin":
-			rows, err = s.DB.Query("SELECT id FROM words WHERE normalized_latin LIKE ? LIMIT ?", query + "%", limit)
-		case "definition":
-			rows, err = s.DB.Query(
-				`SELECT w.id FROM words AS w 
-					JOIN word_definitions AS wd ON w.id = wd.word_id
-					JOIN definitions AS d ON wd.definition_id = d.id
-					WHERE d.definition LIKE ? LIMIT ?`,
-					"%" + query + "%", limit)
-		default:
-			return nil, errors.New("Invalid search method")
+func normalizeForDefinitionSearch(input string) string {
+	var b strings.Builder
+	b.Grow(len(input))
+	for _, r := range strings.ToLower(input) {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) || unicode.IsSpace(r) {
+			b.WriteRune(r)
+			continue
+		}
+		b.WriteRune(' ')
 	}
 
-	return rows, err
+	return strings.Join(strings.Fields(b.String()), " ")
+}
+
+func (s *SQLiteSearcher) collectWordIDs(rows *sql.Rows) ([]int, error) {
+	defer rows.Close()
+
+	var ids []int
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, nil
+}
+
+func (s *SQLiteSearcher) searchDefinitionWordIds(query string, limit int, strictDefinition bool) ([]int, error) {
+	normalizedQuery := normalizeForDefinitionSearch(query)
+	if normalizedQuery == "" {
+		return []int{}, nil
+	}
+
+	const normalizedDefinitionExpr = `
+		trim(
+			replace(replace(replace(replace(replace(replace(replace(replace(lower(d.definition),
+			';', ' '), ',', ' '), '.', ' '), ':', ' '), '(', ' '), ')', ' '), '-', ' '), '/', ' ')
+		)
+	`
+
+	wholeWordPattern := "% " + normalizedQuery + " %"
+	startPattern := " " + normalizedQuery + " %"
+	occurrenceToken := " " + normalizedQuery + " "
+
+	wholeWordRows, err := s.DB.Query(
+		`SELECT w.id
+		FROM words AS w
+		JOIN word_definitions AS wd ON w.id = wd.word_id
+		JOIN definitions AS d ON wd.definition_id = d.id
+		WHERE (' ' || `+normalizedDefinitionExpr+` || ' ') LIKE ?
+		GROUP BY w.id
+		ORDER BY
+			MAX(CASE
+				WHEN `+normalizedDefinitionExpr+` = ? THEN 300
+				WHEN (' ' || `+normalizedDefinitionExpr+` || ' ') LIKE ? THEN 200
+				ELSE 100
+			END) +
+			MAX((LENGTH(' ' || `+normalizedDefinitionExpr+` || ' ') - LENGTH(REPLACE(' ' || `+normalizedDefinitionExpr+` || ' ', ?, ''))) / LENGTH(?)) DESC,
+			w.id ASC
+		LIMIT ?`,
+		wholeWordPattern,
+		normalizedQuery,
+		startPattern,
+		occurrenceToken,
+		occurrenceToken,
+		limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	ids, err := s.collectWordIDs(wholeWordRows)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ids) > 0 || strictDefinition {
+		return ids, nil
+	}
+
+	fallbackRows, err := s.DB.Query(
+		`SELECT DISTINCT w.id
+		FROM words AS w
+		JOIN word_definitions AS wd ON w.id = wd.word_id
+		JOIN definitions AS d ON wd.definition_id = d.id
+		WHERE lower(d.definition) LIKE ?
+		LIMIT ?`,
+		"%"+strings.ToLower(query)+"%",
+		limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.collectWordIDs(fallbackRows)
 }
 
 func (s *SQLiteSearcher) fillWord(result *Result) error {
 	rows, err := s.DB.Query("SELECT balochi, latin, normalized_latin FROM words WHERE id = ?", result.WordID)
 	if err != nil {
 		return err
-	}	
+	}
 	defer rows.Close()
 
 	if !rows.Next() {
@@ -77,7 +159,7 @@ func (s *SQLiteSearcher) fillDefinitions(result *Result) error {
 			JOIN word_definitions AS wd ON w.id = wd.word_id
 			JOIN definitions AS d ON wd.definition_id = d.id
 			WHERE w.id = ?`,
-			result.WordID)
+		result.WordID)
 	if err != nil {
 		return err
 	}
@@ -97,7 +179,7 @@ func (s *SQLiteSearcher) fillDefinitions(result *Result) error {
 	return nil
 }
 
-func (s *SQLiteSearcher) loadWordById (id int) (*Result, error){
+func (s *SQLiteSearcher) loadWordById(id int) (*Result, error) {
 	var result Result
 	result.WordID = id
 
@@ -114,20 +196,11 @@ func (s *SQLiteSearcher) loadWordById (id int) (*Result, error){
 	return &result, nil
 }
 
-func (s *SQLiteSearcher) loadWordsFromRows(rows *sql.Rows) ([]Result, error) {
+func (s *SQLiteSearcher) loadWordsFromIDs(ids []int) ([]Result, error) {
 	var results []Result
 
-	for rows.Next() {
-		var r *Result
-		var id int
-		
-		err := rows.Scan(&id)
-		if err != nil {
-			return nil, err
-		}
-
-		r, err = s.loadWordById(id)
-
+	for _, id := range ids {
+		r, err := s.loadWordById(id)
 		if err != nil {
 			return nil, err
 		}
@@ -138,14 +211,36 @@ func (s *SQLiteSearcher) loadWordsFromRows(rows *sql.Rows) ([]Result, error) {
 	return results, nil
 }
 
-func (s *SQLiteSearcher) Search(query string, field string, limit int) ([]Result, error) {
-	rows, err := s.searchWordIds(query, field, limit)
+func (s *SQLiteSearcher) searchWordIds(query string, field string, limit int, options SearchOptions) ([]int, error) {
+	switch field {
+	case "balochi":
+		rows, err := s.DB.Query("SELECT id FROM words WHERE balochi LIKE ? LIMIT ?", query+"%", limit)
+		if err != nil {
+			return nil, err
+		}
+		return s.collectWordIDs(rows)
+	case "latin":
+		rows, err := s.DB.Query("SELECT id FROM words WHERE normalized_latin LIKE ? LIMIT ?", query+"%", limit)
+		if err != nil {
+			return nil, err
+		}
+		return s.collectWordIDs(rows)
+	case "definition":
+		return s.searchDefinitionWordIds(query, limit, options.StrictDefinition)
+	default:
+		return nil, errors.New("Invalid search method")
+	}
+}
 
+func (s *SQLiteSearcher) SearchWithOptions(query string, field string, limit int, options SearchOptions) ([]Result, error) {
+	ids, err := s.searchWordIds(query, field, limit, options)
 	if err != nil {
 		return nil, err
 	}
 
-	defer rows.Close()
+	return s.loadWordsFromIDs(ids)
+}
 
-	return s.loadWordsFromRows(rows)
+func (s *SQLiteSearcher) Search(query string, field string, limit int) ([]Result, error) {
+	return s.SearchWithOptions(query, field, limit, SearchOptions{})
 }

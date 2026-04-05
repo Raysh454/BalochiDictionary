@@ -76,7 +76,15 @@ func searchHandler(service *search.Service) http.HandlerFunc {
 			return
 		}
 
-		result, err := service.Search(keyword, searchMethod, limit)
+		strictDefinition, err := parseBoolDefaultFalse(query.Get("strict_definition"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		result, err := service.SearchWithOptions(keyword, searchMethod, limit, search.SearchOptions{
+			StrictDefinition: strictDefinition,
+		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -97,6 +105,19 @@ func parseLimit(limitString string) (int, error) {
 	}
 
 	return limit, nil
+}
+
+func parseBoolDefaultFalse(value string) (bool, error) {
+	if value == "" {
+		return false, nil
+	}
+
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, errors.New("strict_definition must be true or false")
+	}
+
+	return parsed, nil
 }
 
 func writeJSON(w http.ResponseWriter, statusCode int, payload any) {

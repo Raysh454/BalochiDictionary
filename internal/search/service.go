@@ -11,6 +11,10 @@ type Service struct {
 	searcher *balochidictionary.SQLiteSearcher
 }
 
+type SearchOptions struct {
+	StrictDefinition bool
+}
+
 func NewService(db *sql.DB) (*Service, error) {
 	if db == nil {
 		return nil, errors.New("db cannot be nil")
@@ -28,8 +32,28 @@ func (s *Service) Search(keyword string, searchMethod string, limit int) ([]balo
 	return s.searcher.Search(keyword, searchMethod, limit)
 }
 
+func (s *Service) SearchWithOptions(keyword string, searchMethod string, limit int, options SearchOptions) ([]balochidictionary.Result, error) {
+	return s.searcher.SearchWithOptions(keyword, searchMethod, limit, balochidictionary.SearchOptions{
+		StrictDefinition: options.StrictDefinition,
+	})
+}
+
 func (s *Service) SearchJSON(keyword string, searchMethod string, limit int) (string, error) {
 	result, err := s.Search(keyword, searchMethod, limit)
+	if err != nil {
+		return "", err
+	}
+
+	jsonOutput, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(jsonOutput), nil
+}
+
+func (s *Service) SearchJSONWithOptions(keyword string, searchMethod string, limit int, options SearchOptions) (string, error) {
+	result, err := s.SearchWithOptions(keyword, searchMethod, limit, options)
 	if err != nil {
 		return "", err
 	}
