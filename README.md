@@ -36,12 +36,12 @@ go run ./cmd/web
 
 Then open `http://localhost:8080`.
 
-## Deploy on Railway
+## Deploy
 
-This repository now includes a `Dockerfile` for Railway deployment of the full web app (UI + API).
+This repository now includes a `Dockerfile` for deployment of the full web app (UI + API).
 
-1. Set Railway service to deploy with the repo `Dockerfile`.
-2. Railway will provide `PORT`; the server binds to it automatically.
+1. Set service to deploy with the repo `Dockerfile`.
+2. service will provide `PORT`; the server binds to it automatically.
 3. Deploy.
 
 The dictionary database is shipped as a static read-only SQLite file inside the image (`internal/dictionary/Database/balochi_dict.db`).
