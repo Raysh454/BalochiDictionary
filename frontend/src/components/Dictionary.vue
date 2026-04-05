@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { reactive } from 'vue'
-import { Search } from '../../wailsjs/go/main/App'
+import { searchDictionary } from '../lib/searchClient'
 
 const data = reactive({
   keyword: '',
@@ -11,14 +11,10 @@ const data = reactive({
 
 async function search() {
   try {
-    const raw = await Search(data.keyword, data.searchMethod, data.limit)
-    const parsed = JSON.parse(raw)
-
-    // Ensure the result is always an array
-    data.results = Array.isArray(parsed) ? parsed : []
+    data.results = await searchDictionary(data.keyword, data.searchMethod, data.limit)
   } catch (err) {
     console.error('Search failed:', err)
-    data.results = [] // fallback to empty array to avoid breaking v-for
+    data.results = []
   }
 }
 
@@ -166,4 +162,3 @@ async function search() {
 }
 
 </style>
-

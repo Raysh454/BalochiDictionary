@@ -1,11 +1,10 @@
 package main
 
 import (
-	"balochi_dictionary_wails/internal/dictionary"
+	"balochi_dictionary_wails/internal/search"
 	"context"
 	"database/sql"
 	"embed"
-	"encoding/json"
 	"os"
 	"path/filepath"
 
@@ -14,9 +13,9 @@ import (
 
 // App struct
 type App struct {
-	ctx context.Context
-	SQLiteSearcher *balochidictionary.SQLiteSearcher
-	assets embed.FS
+	ctx           context.Context
+	SearchService *search.Service
+	assets        embed.FS
 }
 
 // NewApp creates a new App application struct
@@ -48,11 +47,11 @@ func (a *App) deployDatabase() (string, error) {
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		data, err := a.assets.ReadFile(embeddedPath)
 		if err != nil {
-			return "", err 
+			return "", err
 		}
 		err = os.WriteFile(dbPath, data, 0644)
 		if err != nil {
-			return "", err 
+			return "", err
 		}
 	}
 
@@ -80,26 +79,16 @@ func (a *App) InitSearcher() error {
 		return err
 	}
 
-	sqliteSearcher, err :=  balochidictionary.NewSQLiteSearcher(db)
+	searchService, err := search.NewService(db)
 	if err != nil {
 		return err
 	}
 
-	a.SQLiteSearcher = sqliteSearcher 
+	a.SearchService = searchService
 
 	return nil
 }
 
 func (a *App) Search(keyword string, searchMethod string, limit int) (string, error) {
-	result, err := a.SQLiteSearcher.Search(keyword, searchMethod, limit)
-	if err != nil {
-		return "", err
-	}
-	
-	jsonOutput, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return "", err
-	}
-
-	return string(jsonOutput), nil
+	return a.SearchService.SearchJSON(keyword, searchMethod, limit)
 }

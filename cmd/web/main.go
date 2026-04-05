@@ -1,0 +1,123 @@
+package main
+
+import (
+	"balochi_dictionary_wails/internal/search"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	_ "github.com/mattn/go-sqlite3"
+)
+
+const (
+	defaultLimit = 100
+	defaultPort  = "8080"
+)
+
+func main() {
+	service, err := setupSearchService()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/health", healthHandler)
+	mux.HandleFunc("/api/search", searchHandler(service))
+	mux.Handle("/", spaFileServer("frontend/dist"))
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = defaultPort
+	}
+
+	addr := ":" + port
+	log.Printf("web server listening on %s", addr)
+	if err := http.ListenAndServe(addr, mux); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func setupSearchService() (*search.Service, error) {
+	dbPath := filepath.Join("internal", "dictionary", "Database", "balochi_dict.db")
+	if _, err := os.Stat(dbPath); err != nil {
+		return nil, err
+	}
+
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return search.NewService(db)
+}
+
+func healthHandler(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func searchHandler(service *search.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		keyword := query.Get("keyword")
+		searchMethod := query.Get("method")
+		if searchMethod == "" {
+			searchMethod = "balochi"
+		}
+
+		limit, err := parseLimit(query.Get("limit"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		result, err := service.Search(keyword, searchMethod, limit)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, result)
+	}
+}
+
+func parseLimit(limitString string) (int, error) {
+	if limitString == "" {
+		return defaultLimit, nil
+	}
+
+	limit, err := strconv.Atoi(limitString)
+	if err != nil || limit < 1 {
+		return 0, errors.New("limit must be a positive integer")
+	}
+
+	return limit, nil
+}
+
+func writeJSON(w http.ResponseWriter, statusCode int, payload any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func spaFileServer(root string) http.Handler {
+	fileServer := http.FileServer(http.Dir(root))
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		relativePath := strings.TrimPrefix(filepath.Clean(r.URL.Path), "/")
+		path := filepath.Join(root, relativePath)
+		if stat, err := os.Stat(path); err == nil && !stat.IsDir() {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		http.ServeFile(w, r, filepath.Join(root, "index.html"))
+	})
+}
