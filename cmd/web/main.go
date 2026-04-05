@@ -16,8 +16,10 @@ import (
 )
 
 const (
-	defaultLimit = 100
-	defaultPort  = "8080"
+	defaultLimit       = 100
+	defaultPort        = "8080"
+	defaultBrowseLimit = 50
+	maxBrowseLimit     = 100
 )
 
 func main() {
@@ -29,6 +31,9 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", healthHandler)
 	mux.HandleFunc("/api/search", searchHandler(service))
+	mux.HandleFunc("/api/browse", browseHandler(service))
+	mux.HandleFunc("/api/browse/letters", browseLettersHandler(service))
+	mux.HandleFunc("/api/browse/item", browseItemHandler(service))
 	mux.Handle("/", spaFileServer("frontend/dist"))
 
 	port := os.Getenv("PORT")
@@ -94,6 +99,67 @@ func searchHandler(service *search.Service) http.HandlerFunc {
 	}
 }
 
+func browseHandler(service *search.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		letter := query.Get("letter")
+
+		limit, err := parseBrowseLimit(query.Get("limit"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		offset, err := parseBrowseOffset(query.Get("offset"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		response, err := service.Browse(letter, limit, offset)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, response)
+	}
+}
+
+func browseLettersHandler(service *search.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		response, err := service.BrowseLetters()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, response)
+	}
+}
+
+func browseItemHandler(service *search.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		wordID, err := parseWordID(r.URL.Query().Get("word_id"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		response, err := service.BrowseItemDetail(wordID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				http.Error(w, "word not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, response)
+	}
+}
+
 func parseLimit(limitString string) (int, error) {
 	if limitString == "" {
 		return defaultLimit, nil
@@ -118,6 +184,48 @@ func parseBoolDefaultFalse(value string) (bool, error) {
 	}
 
 	return parsed, nil
+}
+
+func parseBrowseLimit(limitString string) (int, error) {
+	if limitString == "" {
+		return defaultBrowseLimit, nil
+	}
+
+	limit, err := strconv.Atoi(limitString)
+	if err != nil || limit < 1 {
+		return 0, errors.New("limit must be a positive integer")
+	}
+	if limit > maxBrowseLimit {
+		return 0, errors.New("limit must be <= 100")
+	}
+
+	return limit, nil
+}
+
+func parseBrowseOffset(offsetString string) (int, error) {
+	if offsetString == "" {
+		return 0, nil
+	}
+
+	offset, err := strconv.Atoi(offsetString)
+	if err != nil || offset < 0 {
+		return 0, errors.New("offset must be a non-negative integer")
+	}
+
+	return offset, nil
+}
+
+func parseWordID(wordIDString string) (int, error) {
+	if wordIDString == "" {
+		return 0, errors.New("word_id is required")
+	}
+
+	wordID, err := strconv.Atoi(wordIDString)
+	if err != nil || wordID < 1 {
+		return 0, errors.New("word_id must be a positive integer")
+	}
+
+	return wordID, nil
 }
 
 func writeJSON(w http.ResponseWriter, statusCode int, payload any) {

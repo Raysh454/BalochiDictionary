@@ -15,6 +15,27 @@ type SearchOptions struct {
 	StrictDefinition bool
 }
 
+type BrowsePage struct {
+	Items      []balochidictionary.BrowseRow `json:"items"`
+	Pagination BrowsePagination              `json:"pagination"`
+	Filter     BrowseFilter                  `json:"filter"`
+}
+
+type BrowsePagination struct {
+	Offset     int  `json:"offset"`
+	Limit      int  `json:"limit"`
+	NextOffset int  `json:"nextOffset"`
+	HasMore    bool `json:"hasMore"`
+}
+
+type BrowseFilter struct {
+	Letter string `json:"letter"`
+}
+
+type BrowseLettersResponse struct {
+	Letters []balochidictionary.BrowseLetter `json:"letters"`
+}
+
 func NewService(db *sql.DB) (*Service, error) {
 	if db == nil {
 		return nil, errors.New("db cannot be nil")
@@ -64,4 +85,37 @@ func (s *Service) SearchJSONWithOptions(keyword string, searchMethod string, lim
 	}
 
 	return string(jsonOutput), nil
+}
+
+func (s *Service) Browse(letter string, limit int, offset int) (BrowsePage, error) {
+	items, hasMore, err := s.searcher.Browse(letter, limit, offset)
+	if err != nil {
+		return BrowsePage{}, err
+	}
+
+	return BrowsePage{
+		Items: items,
+		Pagination: BrowsePagination{
+			Offset:     offset,
+			Limit:      limit,
+			NextOffset: offset + len(items),
+			HasMore:    hasMore,
+		},
+		Filter: BrowseFilter{
+			Letter: letter,
+		},
+	}, nil
+}
+
+func (s *Service) BrowseLetters() (BrowseLettersResponse, error) {
+	letters, err := s.searcher.BrowseLetters()
+	if err != nil {
+		return BrowseLettersResponse{}, err
+	}
+
+	return BrowseLettersResponse{Letters: letters}, nil
+}
+
+func (s *Service) BrowseItemDetail(wordID int) (balochidictionary.Result, error) {
+	return s.searcher.WordByID(wordID)
 }

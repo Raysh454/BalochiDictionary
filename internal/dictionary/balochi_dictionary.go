@@ -21,6 +21,18 @@ type Definition struct {
 	Text         string
 }
 
+type BrowseRow struct {
+	WordID          int
+	Balochi         string
+	Latin           string
+	NormalizedLatin string
+}
+
+type BrowseLetter struct {
+	Letter string
+	Count  int
+}
+
 type SQLiteSearcher struct {
 	DB *sql.DB
 }
@@ -302,4 +314,72 @@ func (s *SQLiteSearcher) SearchWithOptions(query string, field string, limit int
 
 func (s *SQLiteSearcher) Search(query string, field string, limit int) ([]Result, error) {
 	return s.SearchWithOptions(query, field, limit, SearchOptions{})
+}
+
+func (s *SQLiteSearcher) WordByID(id int) (Result, error) {
+	result, err := s.loadWordById(id)
+	if err != nil {
+		return Result{}, err
+	}
+
+	return *result, nil
+}
+
+func (s *SQLiteSearcher) Browse(letter string, limit int, offset int) ([]BrowseRow, bool, error) {
+	baseQuery := `SELECT id, balochi, latin, normalized_latin FROM words`
+	args := []any{}
+	if letter != "" {
+		baseQuery += ` WHERE balochi LIKE ?`
+		args = append(args, letter+"%")
+	}
+
+	baseQuery += ` ORDER BY balochi ASC, id ASC LIMIT ? OFFSET ?`
+	args = append(args, limit+1, offset)
+
+	rows, err := s.DB.Query(baseQuery, args...)
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+
+	items := make([]BrowseRow, 0, limit+1)
+	for rows.Next() {
+		var item BrowseRow
+		if err := rows.Scan(&item.WordID, &item.Balochi, &item.Latin, &item.NormalizedLatin); err != nil {
+			return nil, false, err
+		}
+		items = append(items, item)
+	}
+
+	hasMore := len(items) > limit
+	if hasMore {
+		items = items[:limit]
+	}
+
+	return items, hasMore, nil
+}
+
+func (s *SQLiteSearcher) BrowseLetters() ([]BrowseLetter, error) {
+	rows, err := s.DB.Query(
+		`SELECT substr(balochi, 1, 1) AS letter, COUNT(*)
+		FROM words
+		WHERE balochi IS NOT NULL AND balochi != ''
+		GROUP BY letter
+		ORDER BY letter ASC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	letters := []BrowseLetter{}
+	for rows.Next() {
+		var letter BrowseLetter
+		if err := rows.Scan(&letter.Letter, &letter.Count); err != nil {
+			return nil, err
+		}
+		letters = append(letters, letter)
+	}
+
+	return letters, nil
 }
