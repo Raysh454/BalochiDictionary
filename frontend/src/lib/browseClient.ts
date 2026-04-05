@@ -3,15 +3,12 @@ export type BrowseItem = {
   Balochi: string
   Latin: string
   NormalizedLatin: string
+  Definitions: BrowseDefinition[]
 }
 
 export type BrowseDefinition = {
   PartOfSpeech: string
   Text: string
-}
-
-export type BrowseItemDetail = BrowseItem & {
-  Definitions: BrowseDefinition[]
 }
 
 export type BrowsePagination = {
@@ -74,17 +71,4 @@ export async function browseLetters(): Promise<BrowseLetter[]> {
       count: entry.count ?? entry.Count ?? 0,
     }))
     .filter((entry: BrowseLetter) => entry.letter.length > 0)
-}
-
-export async function browseItemDetail(wordID: number, signal?: AbortSignal): Promise<BrowseItemDetail> {
-  const params = new URLSearchParams({
-    word_id: String(wordID),
-  })
-
-  const response = await fetch(`/api/browse/item?${params.toString()}`, { signal })
-  if (!response.ok) {
-    throw new Error(await response.text())
-  }
-
-  return response.json()
 }

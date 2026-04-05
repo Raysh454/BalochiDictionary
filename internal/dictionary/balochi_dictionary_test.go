@@ -157,6 +157,12 @@ func TestBrowseReturnsAlphabeticalRowsWithDeterministicPaging(t *testing.T) {
 	if items[0].WordID != 1 || items[1].WordID != 6 {
 		t.Fatalf("expected tie-break by id for same balochi values, got ids %d, %d", items[0].WordID, items[1].WordID)
 	}
+	if len(items[0].Definitions) != 1 || items[0].Definitions[0].Text != "water" {
+		t.Fatalf("expected browse item definitions for word 1, got %+v", items[0].Definitions)
+	}
+	if len(items[1].Definitions) != 0 {
+		t.Fatalf("expected empty definitions for word 6, got %+v", items[1].Definitions)
+	}
 
 	nextItems, nextHasMore, err := searcher.Browse("", 2, 2)
 	if err != nil {
@@ -192,6 +198,9 @@ func TestBrowseFiltersByLetter(t *testing.T) {
 		if item.Balochi != "dup" {
 			t.Fatalf("expected only 'dup' rows for letter filter, got %q", item.Balochi)
 		}
+		if len(item.Definitions) != 1 || item.Definitions[0].Text != "fresh water" {
+			t.Fatalf("expected filtered browse row definitions, got %+v", item.Definitions)
+		}
 	}
 }
 
@@ -223,18 +232,68 @@ func TestBrowseLettersReturnsGroupedCounts(t *testing.T) {
 	}
 }
 
-func TestWordByIDReturnsDefinitions(t *testing.T) {
+func TestBalochiSearchRanksExactThenShortestPrefixThenDeterministicTieBreak(t *testing.T) {
 	searcher := setupTestSearcher(t)
 
-	result, err := searcher.WordByID(1)
-	if err != nil {
-		t.Fatalf("word by id: %v", err)
+	if _, err := searcher.DB.Exec(`
+		INSERT INTO words (id, balochi, latin, normalized_latin) VALUES
+			(7, 'ka', 'k-latin-1', 'k-latin-1'),
+			(8, 'ka', 'k-latin-2', 'k-latin-2'),
+			(9, 'kaa', 'k-latin-3', 'k-latin-3'),
+			(10, 'kab', 'k-latin-4', 'k-latin-4'),
+			(11, 'kaa', 'k-latin-5', 'k-latin-5'),
+			(12, 'kaab', 'k-latin-6', 'k-latin-6'),
+			(13, 'kaac', 'k-latin-7', 'k-latin-7');
+	`); err != nil {
+		t.Fatalf("insert ranking rows: %v", err)
 	}
 
-	if result.Balochi != "a" {
-		t.Fatalf("unexpected word payload: %+v", result)
+	results, err := searcher.Search("ka", "balochi", 20)
+	if err != nil {
+		t.Fatalf("search: %v", err)
 	}
-	if len(result.Definitions) != 1 || result.Definitions[0].Text != "water" {
-		t.Fatalf("unexpected definitions payload: %+v", result.Definitions)
+
+	if len(results) < 7 {
+		t.Fatalf("expected at least 7 results, got %d", len(results))
+	}
+
+	expectedOrder := []int{7, 8, 9, 11, 10, 12, 13}
+	for i, id := range expectedOrder {
+		if results[i].WordID != id {
+			t.Fatalf("unexpected rank at index %d: got id=%d want id=%d", i, results[i].WordID, id)
+		}
+	}
+}
+
+func TestLatinSearchRanksExactThenShortestPrefixThenDeterministicTieBreak(t *testing.T) {
+	searcher := setupTestSearcher(t)
+
+	if _, err := searcher.DB.Exec(`
+		INSERT INTO words (id, balochi, latin, normalized_latin) VALUES
+			(7, 'x1', 'la-1', 'la'),
+			(8, 'x2', 'la-2', 'la'),
+			(9, 'x3', 'la-3', 'laa'),
+			(10, 'x4', 'la-4', 'lab'),
+			(11, 'x5', 'la-5', 'laa'),
+			(12, 'x6', 'la-6', 'laab'),
+			(13, 'x7', 'la-7', 'laac');
+	`); err != nil {
+		t.Fatalf("insert ranking rows: %v", err)
+	}
+
+	results, err := searcher.Search("la", "latin", 20)
+	if err != nil {
+		t.Fatalf("search: %v", err)
+	}
+
+	if len(results) < 7 {
+		t.Fatalf("expected at least 7 results, got %d", len(results))
+	}
+
+	expectedOrder := []int{7, 8, 9, 11, 10, 12, 13}
+	for i, id := range expectedOrder {
+		if results[i].WordID != id {
+			t.Fatalf("unexpected rank at index %d: got id=%d want id=%d", i, results[i].WordID, id)
+		}
 	}
 }

@@ -2,10 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   browseDictionary,
-  browseItemDetail,
   browseLetters,
   type BrowseItem,
-  type BrowseItemDetail,
   type BrowseLetter,
 } from '../lib/browseClient'
 import LetterJumpSidebar from './LetterJumpSidebar.vue'
@@ -20,18 +18,12 @@ const data = reactive({
   loading: false,
   loadingMore: false,
   error: '',
-  selectedWordID: 0,
-  selectedItemDetail: null as BrowseItemDetail | null,
-  detailLoading: false,
-  detailError: '',
 })
 
 const loadMoreSentinel = ref<HTMLElement | null>(null)
 const canUseIntersectionObserver = typeof window !== 'undefined' && 'IntersectionObserver' in window
 let browseController: AbortController | null = null
 let browseRequestToken = 0
-let detailController: AbortController | null = null
-let detailRequestToken = 0
 let loadMoreObserver: IntersectionObserver | null = null
 
 function appendUniqueItems(existing: BrowseItem[], incoming: BrowseItem[]): BrowseItem[] {
@@ -62,25 +54,12 @@ async function loadLetters() {
   }
 }
 
-function resetSelectedItem() {
-  data.selectedWordID = 0
-  data.selectedItemDetail = null
-  data.detailError = ''
-  data.detailLoading = false
-
-  if (detailController) {
-    detailController.abort()
-    detailController = null
-  }
-}
-
 async function loadBrowse(reset = true) {
   if (reset) {
     if (data.loading) {
       return
     }
     data.loadingMore = false
-    resetSelectedItem()
   } else if (data.loading || data.loadingMore || !data.hasMore) {
     return
   }
@@ -138,51 +117,6 @@ async function loadBrowse(reset = true) {
     } else {
       data.loadingMore = false
     }
-  }
-}
-
-async function loadBrowseItemDetail(wordID: number) {
-  if (data.selectedWordID === wordID && data.selectedItemDetail && !data.detailError) {
-    return
-  }
-
-  data.selectedWordID = wordID
-  data.selectedItemDetail = null
-  data.detailError = ''
-  data.detailLoading = true
-
-  if (detailController) {
-    detailController.abort()
-  }
-
-  detailController = new AbortController()
-  const requestToken = ++detailRequestToken
-
-  try {
-    const detail = await browseItemDetail(wordID, detailController.signal)
-    if (requestToken !== detailRequestToken) {
-      return
-    }
-
-    data.selectedItemDetail = detail
-  } catch (err) {
-    if ((err as DOMException)?.name === 'AbortError') {
-      return
-    }
-
-    if (requestToken !== detailRequestToken) {
-      return
-    }
-
-    console.error('Browse item detail failed:', err)
-    data.detailError = 'Unable to load entry details.'
-  } finally {
-    if (requestToken !== detailRequestToken) {
-      return
-    }
-
-    detailController = null
-    data.detailLoading = false
   }
 }
 
@@ -244,10 +178,6 @@ onBeforeUnmount(() => {
     browseController.abort()
   }
 
-  if (detailController) {
-    detailController.abort()
-  }
-
   if (loadMoreObserver) {
     loadMoreObserver.disconnect()
     loadMoreObserver = null
@@ -269,23 +199,17 @@ onBeforeUnmount(() => {
       <div v-else-if="data.loading">Loading...</div>
       <div v-else-if="data.items.length === 0">No entries</div>
       <div v-else>
-        <div v-for="word in data.items" :key="word.WordID" class="card browse-item" :class="{ selected: data.selectedWordID === word.WordID }">
-          <button class="browse-item-trigger" type="button" @click="loadBrowseItemDetail(word.WordID)">
-            <h3>{{ word.Balochi }} <small>({{ word.Latin }})</small></h3>
-            <p><strong>Normalized:</strong> {{ word.NormalizedLatin }}</p>
-          </button>
+        <div v-for="word in data.items" :key="word.WordID" class="card browse-item">
+          <h3>{{ word.Balochi }} <small>({{ word.Latin }})</small></h3>
+          <p><strong>Normalized:</strong> {{ word.NormalizedLatin }}</p>
 
-          <div v-if="data.selectedWordID === word.WordID" class="inline-detail">
-            <p v-if="data.detailLoading">Loading entry details...</p>
-            <p v-else-if="data.detailError">{{ data.detailError }}</p>
-            <template v-else-if="data.selectedItemDetail">
-              <ul v-if="data.selectedItemDetail.Definitions.length > 0">
-                <li v-for="(def, index) in data.selectedItemDetail.Definitions" :key="index">
-                  <em>{{ def.PartOfSpeech }}:</em> {{ def.Text }}
-                </li>
-              </ul>
-              <p v-else>No definitions</p>
-            </template>
+          <div class="inline-detail">
+            <ul v-if="word.Definitions.length > 0">
+              <li v-for="(def, index) in word.Definitions" :key="index">
+                <em>{{ def.PartOfSpeech }}:</em> {{ def.Text }}
+              </li>
+            </ul>
+            <p v-else>No definitions</p>
           </div>
         </div>
         <div ref="loadMoreSentinel" class="load-more-sentinel" aria-hidden="true"></div>
@@ -370,20 +294,6 @@ onBeforeUnmount(() => {
   width: 100%;
   border: 1px solid transparent;
   text-align: left;
-}
-
-.browse-item-trigger {
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: 0;
-  color: inherit;
-  cursor: pointer;
-  padding: 0;
-}
-
-.browse-item.selected {
-  border-color: #66aaff;
 }
 
 .inline-detail {

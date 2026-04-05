@@ -18,6 +18,10 @@ type browseResponse struct {
 		Balochi         string
 		Latin           string
 		NormalizedLatin string
+		Definitions     []struct {
+			PartOfSpeech string
+			Text         string
+		}
 	}
 	Pagination struct {
 		Offset     int
@@ -88,6 +92,17 @@ func decodeBrowseResponse(t *testing.T, rec *httptest.ResponseRecorder) browseRe
 	return response
 }
 
+func decodeBrowseResponseMap(t *testing.T, rec *httptest.ResponseRecorder) map[string]any {
+	t.Helper()
+
+	var response map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode raw response: %v", err)
+	}
+
+	return response
+}
+
 func TestBrowseHandlerOrdersAlphabeticallyAndPagesConsistently(t *testing.T) {
 	service := setupWebTestService(t)
 
@@ -99,6 +114,7 @@ func TestBrowseHandlerOrdersAlphabeticallyAndPagesConsistently(t *testing.T) {
 		t.Fatalf("expected 200, got %d", firstPageRec.Code)
 	}
 	firstPage := decodeBrowseResponse(t, firstPageRec)
+	firstPageRaw := decodeBrowseResponseMap(t, firstPageRec)
 
 	if len(firstPage.Items) != 2 {
 		t.Fatalf("expected 2 items on first page, got %d", len(firstPage.Items))
@@ -108,6 +124,46 @@ func TestBrowseHandlerOrdersAlphabeticallyAndPagesConsistently(t *testing.T) {
 	}
 	if firstPage.Pagination.Offset != 0 || firstPage.Pagination.Limit != 2 || firstPage.Pagination.NextOffset != 2 || !firstPage.Pagination.HasMore {
 		t.Fatalf("unexpected first-page pagination payload: %+v", firstPage.Pagination)
+	}
+	definitionsByID := map[int]int{}
+	for _, item := range firstPage.Items {
+		definitionsByID[item.WordID] = len(item.Definitions)
+		if item.WordID == 1 && (len(item.Definitions) != 1 || item.Definitions[0].Text != "water") {
+			t.Fatalf("expected browse row for word 1 to include definitions, got %+v", item.Definitions)
+		}
+	}
+	if definitionsByID[1] != 1 {
+		t.Fatalf("expected word 1 in first page with definitions, got %+v", firstPage.Items)
+	}
+	rawItems, ok := firstPageRaw["items"].([]any)
+	if !ok || len(rawItems) != 2 {
+		t.Fatalf("expected items array in response payload, got %+v", firstPageRaw["items"])
+	}
+	rawDefinitionsByID := map[int][]any{}
+	for _, rawItem := range rawItems {
+		itemMap, ok := rawItem.(map[string]any)
+		if !ok {
+			t.Fatalf("expected object item payload, got %+v", rawItem)
+		}
+		wordIDFloat, ok := itemMap["WordID"].(float64)
+		if !ok {
+			t.Fatalf("expected numeric WordID in item payload, got %+v", itemMap["WordID"])
+		}
+		definitions, ok := itemMap["Definitions"].([]any)
+		if !ok {
+			t.Fatalf("expected inline Definitions array in item payload, got %+v", itemMap["Definitions"])
+		}
+		rawDefinitionsByID[int(wordIDFloat)] = definitions
+	}
+	if len(rawDefinitionsByID[1]) != 1 {
+		t.Fatalf("expected inline Definitions array for word 1, got %+v", rawDefinitionsByID[1])
+	}
+	firstDefinition, ok := rawDefinitionsByID[1][0].(map[string]any)
+	if !ok || firstDefinition["PartOfSpeech"] != "n" || firstDefinition["Text"] != "water" {
+		t.Fatalf("expected inline definition shape for word 1, got %+v", rawDefinitionsByID[1][0])
+	}
+	if len(rawDefinitionsByID[2]) != 0 {
+		t.Fatalf("expected empty inline Definitions array for word 2, got %+v", rawDefinitionsByID[2])
 	}
 	if firstPage.Filter.Letter != "" {
 		t.Fatalf("expected empty filter letter, got %q", firstPage.Filter.Letter)
@@ -192,7 +248,7 @@ func TestBrowseLettersHandlerReturnsCounts(t *testing.T) {
 func TestBrowseHandlerAppliesLetterFilter(t *testing.T) {
 	service := setupWebTestService(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/browse?limit=10&offset=0&letter=آ", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/browse?limit=10&offset=0&letter=ا", nil)
 	rec := httptest.NewRecorder()
 
 	browseHandler(service).ServeHTTP(rec, req)
@@ -202,78 +258,19 @@ func TestBrowseHandlerAppliesLetterFilter(t *testing.T) {
 	}
 
 	response := decodeBrowseResponse(t, rec)
-	if response.Filter.Letter != "آ" {
-		t.Fatalf("expected filter.letter=آ, got %q", response.Filter.Letter)
+	if response.Filter.Letter != "ا" {
+		t.Fatalf("expected filter.letter=ا, got %q", response.Filter.Letter)
 	}
 	if len(response.Items) != 1 {
 		t.Fatalf("expected 1 filtered item, got %d", len(response.Items))
 	}
+	if len(response.Items[0].Definitions) != 1 || response.Items[0].Definitions[0].PartOfSpeech != "n" || response.Items[0].Definitions[0].Text != "water" {
+		t.Fatalf("expected filtered browse item definitions inline, got %+v", response.Items[0].Definitions)
+	}
 	for _, item := range response.Items {
-		if !strings.HasPrefix(item.Balochi, "آ") {
+		if !strings.HasPrefix(item.Balochi, "ا") {
 			t.Fatalf("expected item to match letter filter, got %q", item.Balochi)
 		}
-	}
-}
-
-func TestBrowseItemHandlerReturnsDetailedEntry(t *testing.T) {
-	service := setupWebTestService(t)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/browse/item?word_id=1", nil)
-	rec := httptest.NewRecorder()
-	browseItemHandler(service).ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", rec.Code)
-	}
-
-	var response struct {
-		WordID      int
-		Balochi     string
-		Definitions []struct {
-			PartOfSpeech string
-			Text         string
-		}
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-
-	if response.WordID != 1 || response.Balochi != "ا" {
-		t.Fatalf("unexpected browse item payload: %+v", response)
-	}
-	if len(response.Definitions) != 1 || response.Definitions[0].Text != "water" {
-		t.Fatalf("unexpected browse item definitions: %+v", response.Definitions)
-	}
-}
-
-func TestBrowseItemHandlerValidatesWordID(t *testing.T) {
-	service := setupWebTestService(t)
-
-	tests := []string{
-		"/api/browse/item",
-		"/api/browse/item?word_id=0",
-		"/api/browse/item?word_id=abc",
-	}
-
-	for _, path := range tests {
-		req := httptest.NewRequest(http.MethodGet, path, nil)
-		rec := httptest.NewRecorder()
-		browseItemHandler(service).ServeHTTP(rec, req)
-		if rec.Code != http.StatusBadRequest {
-			t.Fatalf("expected 400 for %s, got %d", path, rec.Code)
-		}
-	}
-}
-
-func TestBrowseItemHandlerReturnsNotFoundForMissingWord(t *testing.T) {
-	service := setupWebTestService(t)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/browse/item?word_id=999", nil)
-	rec := httptest.NewRecorder()
-	browseItemHandler(service).ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", rec.Code)
 	}
 }
 

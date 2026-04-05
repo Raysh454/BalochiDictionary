@@ -48,6 +48,18 @@ The dictionary database is shipped as a static read-only SQLite file inside the 
 
 ## Definition search semantics
 
+### Latin and Balochi mode ranking
+
+For `method=latin` and `method=balochi`, results are ranked by:
+
+1. Exact match first.
+2. Then prefix matches (`query%`) ordered by shortest word first.
+3. Deterministic tie-break by lexical value and word id.
+
+This makes queries like `ap` return the core headword before longer forms such as `apsoz`, `appan`, or `aptar`.
+
+### Definition mode ranking
+
 Definition mode now uses a two-stage strategy for better relevance:
 
 1. Whole-word matching and ranking (exact definition matches first, then phrase-leading matches, then other whole-word matches).
@@ -78,7 +90,7 @@ The browse feature is for scanning headwords in dictionary order instead of typi
 2. When a user picks a letter, call `GET /api/browse` with `letter=<selected>` and `offset=0`.
 3. Use `pagination.nextOffset` / `pagination.hasMore` from each browse response to jump to the next page for the same filter.
 4. Clearing the letter filter means calling `/api/browse` without `letter`.
-5. Expand the selected entry **inline in the list item** (instead of using a separate top selected-entry panel).
+5. Render `Definitions` inline for each loaded browse row (no per-item fetch needed for normal list display).
 
 ## Browse API
 
@@ -93,7 +105,7 @@ Query params:
 Behavior:
 
 - sorted by `balochi ASC, id ASC`
-- returns lightweight rows only (`WordID`, `Balochi`, `Latin`, `NormalizedLatin`)
+- each row includes `Definitions` for inline display in browse lists
 - deterministic paging via `offset` and `limit`
 
 Response shape:
@@ -105,7 +117,13 @@ Response shape:
       "WordID": 2,
       "Balochi": "آ",
       "Latin": "alif-madda",
-      "NormalizedLatin": "alifmadda"
+      "NormalizedLatin": "alifmadda",
+      "Definitions": [
+        {
+          "PartOfSpeech": "n",
+          "Text": "example definition"
+        }
+      ]
     }
   ],
   "pagination": {
@@ -132,15 +150,3 @@ Returns grouped first-letter buckets used by browse UIs:
   ]
 }
 ```
-
-### `GET /api/browse/item`
-
-Returns a full dictionary entry (including `Definitions`) for a selected browse row.
-
-Query params:
-
-- `word_id` (required): dictionary word id, must be a positive integer
-
-Example:
-
-`/api/browse/item?word_id=2`

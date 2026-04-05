@@ -33,7 +33,6 @@ func main() {
 	mux.HandleFunc("/api/search", searchHandler(service))
 	mux.HandleFunc("/api/browse", browseHandler(service))
 	mux.HandleFunc("/api/browse/letters", browseLettersHandler(service))
-	mux.HandleFunc("/api/browse/item", browseItemHandler(service))
 	mux.Handle("/", spaFileServer("frontend/dist"))
 
 	port := os.Getenv("PORT")
@@ -138,28 +137,6 @@ func browseLettersHandler(service *search.Service) http.HandlerFunc {
 	}
 }
 
-func browseItemHandler(service *search.Service) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		wordID, err := parseWordID(r.URL.Query().Get("word_id"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		response, err := service.BrowseItemDetail(wordID)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				http.Error(w, "word not found", http.StatusNotFound)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		writeJSON(w, http.StatusOK, response)
-	}
-}
-
 func parseLimit(limitString string) (int, error) {
 	if limitString == "" {
 		return defaultLimit, nil
@@ -213,19 +190,6 @@ func parseBrowseOffset(offsetString string) (int, error) {
 	}
 
 	return offset, nil
-}
-
-func parseWordID(wordIDString string) (int, error) {
-	if wordIDString == "" {
-		return 0, errors.New("word_id is required")
-	}
-
-	wordID, err := strconv.Atoi(wordIDString)
-	if err != nil || wordID < 1 {
-		return 0, errors.New("word_id must be a positive integer")
-	}
-
-	return wordID, nil
 }
 
 func writeJSON(w http.ResponseWriter, statusCode int, payload any) {

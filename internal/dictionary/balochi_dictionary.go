@@ -26,6 +26,7 @@ type BrowseRow struct {
 	Balochi         string
 	Latin           string
 	NormalizedLatin string
+	Definitions     []Definition
 }
 
 type BrowseLetter struct {
@@ -285,13 +286,39 @@ func deduplicateNumericVariants(results []Result) []Result {
 func (s *SQLiteSearcher) searchWordIds(query string, field string, limit int, options SearchOptions) ([]int, error) {
 	switch field {
 	case "balochi":
-		rows, err := s.DB.Query("SELECT id FROM words WHERE balochi LIKE ? LIMIT ?", query+"%", limit)
+		rows, err := s.DB.Query(
+			`SELECT id
+			FROM words
+			WHERE balochi LIKE ?
+			ORDER BY
+				CASE WHEN balochi = ? THEN 0 ELSE 1 END ASC,
+				LENGTH(balochi) ASC,
+				balochi ASC,
+				id ASC
+			LIMIT ?`,
+			query+"%",
+			query,
+			limit,
+		)
 		if err != nil {
 			return nil, err
 		}
 		return s.collectWordIDs(rows)
 	case "latin":
-		rows, err := s.DB.Query("SELECT id FROM words WHERE normalized_latin LIKE ? LIMIT ?", query+"%", limit)
+		rows, err := s.DB.Query(
+			`SELECT id
+			FROM words
+			WHERE normalized_latin LIKE ?
+			ORDER BY
+				CASE WHEN normalized_latin = ? THEN 0 ELSE 1 END ASC,
+				LENGTH(normalized_latin) ASC,
+				normalized_latin ASC,
+				id ASC
+			LIMIT ?`,
+			query+"%",
+			query,
+			limit,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -316,13 +343,44 @@ func (s *SQLiteSearcher) Search(query string, field string, limit int) ([]Result
 	return s.SearchWithOptions(query, field, limit, SearchOptions{})
 }
 
-func (s *SQLiteSearcher) WordByID(id int) (Result, error) {
-	result, err := s.loadWordById(id)
-	if err != nil {
-		return Result{}, err
+func (s *SQLiteSearcher) loadDefinitionsByWordIDs(wordIDs []int) (map[int][]Definition, error) {
+	definitionsByWordID := make(map[int][]Definition, len(wordIDs))
+	if len(wordIDs) == 0 {
+		return definitionsByWordID, nil
+	}
+	for _, wordID := range wordIDs {
+		definitionsByWordID[wordID] = []Definition{}
 	}
 
-	return *result, nil
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(wordIDs)), ",")
+	args := make([]any, 0, len(wordIDs))
+	for _, wordID := range wordIDs {
+		args = append(args, wordID)
+	}
+
+	rows, err := s.DB.Query(
+		`SELECT wd.word_id, d.part_of_speech, d.definition
+		FROM word_definitions AS wd
+		JOIN definitions AS d ON wd.definition_id = d.id
+		WHERE wd.word_id IN (`+placeholders+`)
+		ORDER BY wd.word_id ASC, d.id ASC`,
+		args...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var wordID int
+		var definition Definition
+		if err := rows.Scan(&wordID, &definition.PartOfSpeech, &definition.Text); err != nil {
+			return nil, err
+		}
+		definitionsByWordID[wordID] = append(definitionsByWordID[wordID], definition)
+	}
+
+	return definitionsByWordID, nil
 }
 
 func (s *SQLiteSearcher) Browse(letter string, limit int, offset int) ([]BrowseRow, bool, error) {
@@ -354,6 +412,19 @@ func (s *SQLiteSearcher) Browse(letter string, limit int, offset int) ([]BrowseR
 	hasMore := len(items) > limit
 	if hasMore {
 		items = items[:limit]
+	}
+
+	wordIDs := make([]int, 0, len(items))
+	for _, item := range items {
+		wordIDs = append(wordIDs, item.WordID)
+	}
+
+	definitionsByWordID, err := s.loadDefinitionsByWordIDs(wordIDs)
+	if err != nil {
+		return nil, false, err
+	}
+	for i := range items {
+		items[i].Definitions = definitionsByWordID[items[i].WordID]
 	}
 
 	return items, hasMore, nil

@@ -115,7 +115,3 @@ func (s *Service) BrowseLetters() (BrowseLettersResponse, error) {
 
 	return BrowseLettersResponse{Letters: letters}, nil
 }
-
-func (s *Service) BrowseItemDetail(wordID int) (balochidictionary.Result, error) {
-	return s.searcher.WordByID(wordID)
-}
