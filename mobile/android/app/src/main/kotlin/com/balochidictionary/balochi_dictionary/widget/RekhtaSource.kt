@@ -39,11 +39,13 @@ object RekhtaSource {
     const val POETRY_URL = "https://www.rekhta.org/?lang=ur"
 
     /**
-     * Kept well under the ten seconds or so a broadcast receiver gets before
-     * the system may kill it, even if both timeouts are hit on one request.
+     * Generous on purpose. These fetches run in a scheduled job rather than a
+     * broadcast, so there is no ten-second budget to squeeze into, and a phone
+     * waking a cold radio on mobile data can need well over a few seconds just
+     * to connect.
      */
-    private const val CONNECT_TIMEOUT_MS = 4_000
-    private const val READ_TIMEOUT_MS = 5_000
+    private const val CONNECT_TIMEOUT_MS = 20_000
+    private const val READ_TIMEOUT_MS = 25_000
     private const val MAX_REDIRECTS = 3
 
     private const val USER_AGENT =

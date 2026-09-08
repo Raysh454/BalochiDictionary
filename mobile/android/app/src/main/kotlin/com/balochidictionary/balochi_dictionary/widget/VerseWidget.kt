@@ -17,15 +17,9 @@ import com.balochidictionary.balochi_dictionary.R
  */
 class VerseWidget : DailyWidgetProvider() {
 
-    override fun refreshData(context: Context, widgetIds: IntArray): Boolean {
-        if (!RekhtaSource.isVerseStale(context)) return false
-
-        RekhtaSource.refreshVerse(context)
-
-        // Redraw whether or not anything came back. A failed fetch still
-        // changes what should be on screen: the recorded reason has to replace
-        // the "fetching" placeholder, otherwise the widget sits on it forever.
-        return true
+    override fun scheduleRefresh(context: Context, widgetIds: IntArray) {
+        if (!RekhtaSource.isVerseStale(context)) return
+        WidgetRefreshJobService.schedule(context, WidgetRefreshJobService.TARGET_VERSE)
     }
 
     override fun buildViews(context: Context, widgetId: Int): RemoteViews {

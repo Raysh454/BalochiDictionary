@@ -28,6 +28,16 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!--
+          Runs the Rekhta fetches. A job is granted network and a real time
+          budget, unlike a broadcast receiver, and waits for connectivity
+          instead of failing when the device is offline.
+        -->
+        <service
+            android:name=".widget.WidgetRefreshJobService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false" />
+
         <!-- 2x2: word of the day, tap toggles Balochi <-> Rekhta Urdu. -->
         <receiver
             android:name=".widget.WordOfTheDayWidget"

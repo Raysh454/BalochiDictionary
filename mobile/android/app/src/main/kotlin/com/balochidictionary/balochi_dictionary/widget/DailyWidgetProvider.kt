@@ -33,14 +33,12 @@ abstract class DailyWidgetProvider : AppWidgetProvider() {
     protected abstract fun buildViews(context: Context, widgetId: Int): RemoteViews
 
     /**
-     * Fetches anything stale, off the main thread and after the cached views
-     * are already on screen. Returns true if new data landed and the widgets
-     * should be drawn again.
-     *
-     * This runs inside the broadcast's `goAsync()` window, so implementations
-     * must keep well within the ten seconds or so a receiver is granted.
+     * Schedules any network refresh this widget needs, after the cached views
+     * are already on screen. Implementations must not fetch inline: a receiver
+     * has only about ten seconds and is a poor place to ask for the network.
+     * The work belongs in [WidgetRefreshJobService].
      */
-    protected open fun refreshData(context: Context, widgetIds: IntArray): Boolean = false
+    protected open fun scheduleRefresh(context: Context, widgetIds: IntArray) = Unit
 
     /** Action used for this provider's midnight alarm. */
     private val midnightAction: String
@@ -56,6 +54,12 @@ abstract class DailyWidgetProvider : AppWidgetProvider() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_REDRAW) {
+            val ids = intent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS)
+            if (ids != null && ids.isNotEmpty()) renderAsync(context, ids, refresh = false)
+            return
+        }
+
         super.onReceive(context, intent)
 
         if (intent.action == midnightAction) {
@@ -72,8 +76,12 @@ abstract class DailyWidgetProvider : AppWidgetProvider() {
         appWidgetIds.forEach { WidgetPrefs.clearSource(context, it) }
     }
 
-    /** Draws from cache, then refreshes and redraws if anything is stale. */
-    protected fun renderAsync(context: Context, widgetIds: IntArray) {
+    /** Draws from cache, and schedules a fetch when [refresh] is set. */
+    protected fun renderAsync(
+        context: Context,
+        widgetIds: IntArray,
+        refresh: Boolean = true,
+    ) {
         if (widgetIds.isEmpty()) return
 
         val pendingResult = goAsync()
@@ -87,9 +95,7 @@ abstract class DailyWidgetProvider : AppWidgetProvider() {
                 // blank or stale while a fetch is in flight.
                 draw(manager, appContext, widgetIds)
 
-                if (refreshData(appContext, widgetIds)) {
-                    draw(manager, appContext, widgetIds)
-                }
+                if (refresh) scheduleRefresh(appContext, widgetIds)
             } catch (error: Exception) {
                 Log.w(TAG, "Widget update failed", error)
             } finally {
@@ -157,6 +163,9 @@ abstract class DailyWidgetProvider : AppWidgetProvider() {
 
     companion object {
         private const val TAG = "DailyWidgetProvider"
+
+        /** Redraw from cache only; sent by [WidgetRefreshJobService]. */
+        const val ACTION_REDRAW = "com.balochidictionary.balochi_dictionary.widget.REDRAW"
         private val EXECUTOR = Executors.newSingleThreadExecutor()
     }
 }
