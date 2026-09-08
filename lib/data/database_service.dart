@@ -18,10 +18,25 @@ class DatabaseService {
   static const String _assetPath = 'assets/db/balochi_dict.db';
   static const String _fileName = 'balochi_dict.db';
 
-  /// Bumped whenever the bundled asset changes so an installed copy of an
-  /// older database gets replaced on the next launch.
-  static const int assetVersion = 1;
+  /// Bumped whenever the bundled asset or [indexStatements] changes, so an
+  /// installed copy is rebuilt on the next launch.
+  static const int deploymentVersion = 1;
   static const String _versionFileName = 'balochi_dict.db.version';
+
+  /// Indexes the scraped dictionary does not ship with.
+  ///
+  /// The source database has no indexes at all, so every definition join and
+  /// the word-of-the-day lookup degrade into full table scans — measured at
+  /// around 13 seconds per word-of-the-day query on desktop, and worse on a
+  /// phone. Building these once at deploy time takes about a tenth of a
+  /// second and roughly 0.9 MB of storage, and makes those queries instant.
+  static const List<String> indexStatements = [
+    'CREATE INDEX IF NOT EXISTS idx_word_definitions_word_id '
+        'ON word_definitions(word_id)',
+    'CREATE INDEX IF NOT EXISTS idx_words_balochi ON words(balochi)',
+    'CREATE INDEX IF NOT EXISTS idx_words_normalized_latin '
+        'ON words(normalized_latin)',
+  ];
 
   static Database? _database;
   static Future<Database>? _opening;
@@ -43,15 +58,16 @@ class DatabaseService {
   }
 
   static Future<Database> _open() async {
-    _initFfiForDesktop();
+    initFfiForDesktop();
 
     final dbPath = await _deployDatabase();
     return openDatabase(dbPath, readOnly: true);
   }
 
   /// Desktop runs need the FFI implementation; Android and iOS use the
-  /// platform SQLite that `sqflite` binds by default.
-  static void _initFfiForDesktop() {
+  /// platform SQLite installed by the generated plugin registrant.
+  @visibleForTesting
+  static void initFfiForDesktop() {
     if (kIsWeb) return;
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       sqfliteFfiInit();
@@ -59,7 +75,8 @@ class DatabaseService {
     }
   }
 
-  /// Copies the asset into app storage if it is missing or out of date.
+  /// Copies the asset into app storage if it is missing or out of date, then
+  /// indexes it. Returns the path of the deployed file.
   static Future<String> _deployDatabase() async {
     final directory = await getApplicationSupportDirectory();
     await directory.create(recursive: true);
@@ -86,21 +103,32 @@ class DatabaseService {
       await dbFile.delete();
     }
     await tempFile.rename(dbPath);
-    await versionFile.writeAsString('$assetVersion', flush: true);
+
+    await prepareDatabase(dbPath);
+
+    // Only recorded once the copy is indexed, so an interrupted deployment is
+    // retried on the next launch.
+    await versionFile.writeAsString('$deploymentVersion', flush: true);
 
     return dbPath;
+  }
+
+  /// Opens the deployed copy for writing just long enough to build indexes.
+  @visibleForTesting
+  static Future<void> prepareDatabase(String path) async {
+    final db = await openDatabase(path);
+    try {
+      for (final statement in indexStatements) {
+        await db.execute(statement);
+      }
+    } finally {
+      await db.close();
+    }
   }
 
   static Future<bool> _isCurrentVersion(File versionFile) async {
     if (!await versionFile.exists()) return false;
     final contents = (await versionFile.readAsString()).trim();
-    return int.tryParse(contents) == assetVersion;
-  }
-
-  /// Test hook: opens the bundled asset from a caller-provided path.
-  @visibleForTesting
-  static Future<Database> openAt(String path) {
-    _initFfiForDesktop();
-    return openDatabase(path, readOnly: true);
+    return int.tryParse(contents) == deploymentVersion;
   }
 }

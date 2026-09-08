@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:balochi_dictionary/data/database_service.dart';
 import 'package:balochi_dictionary/data/dictionary_repository.dart';
 import 'package:balochi_dictionary/data/word_of_the_day_service.dart';
 import 'package:balochi_dictionary/models/dictionary_models.dart';
@@ -12,24 +13,34 @@ void main() {
   late Database db;
   late DictionaryRepository repository;
 
+  late Directory workDir;
+
   setUpAll(() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
 
-    // Relative paths are resolved against sqflite's own databases directory,
-    // so the bundled asset is opened by absolute path instead.
+    // Deploy the asset the same way the app does -- copy it out and build the
+    // indexes -- so the tests measure the database the app actually queries.
     final assetPath = Directory.current.uri
         .resolve('assets/db/balochi_dict.db')
         .toFilePath();
 
+    workDir = await Directory.systemTemp.createTemp('balochi_dict_test');
+    final dbPath = '${workDir.path}/balochi_dict.db';
+    await File(assetPath).copy(dbPath);
+    await DatabaseService.prepareDatabase(dbPath);
+
     db = await databaseFactory.openDatabase(
-      assetPath,
+      dbPath,
       options: OpenDatabaseOptions(readOnly: true),
     );
     repository = DictionaryRepository(db);
   });
 
-  tearDownAll(() async => db.close());
+  tearDownAll(() async {
+    await db.close();
+    await workDir.delete(recursive: true);
+  });
 
   group('normalizeForDefinitionSearch', () {
     test('lower-cases and strips punctuation to single spaces', () {
@@ -53,7 +64,20 @@ void main() {
         DictionaryRepository.normalizeForDefinitionSearch('top 10 (ten)'),
         'top 10 ten',
       );
-      expect(DictionaryRepository.normalizeForDefinitionSearch('اَبا!'), 'اَبا');
+      expect(
+        DictionaryRepository.normalizeForDefinitionSearch('بابا!'),
+        'بابا',
+      );
+    });
+
+    test('drops Arabic vowel marks, as the Go normalizer does', () {
+      // Combining marks are not letters to Go's unicode.IsLetter either, so
+      // they become spaces. Definition search only ever sees English glosses,
+      // so this only matters for staying faithful to the original ranking.
+      expect(
+        DictionaryRepository.normalizeForDefinitionSearch('اَبا'),
+        'ا با',
+      );
     });
   });
 
