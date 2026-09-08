@@ -26,8 +26,13 @@ flutter run -d windows      # desktop, for development
 Build a release APK:
 
 ```bash
-flutter build apk --release
+flutter build apk --release                    # universal, ~53 MB
+flutter build apk --release --split-per-abi    # ~18 MB for arm64-v8a
 ```
+
+The universal APK carries native libraries for all three ABIs; the split
+build produces one APK per ABI, and a modern phone needs only the
+`arm64-v8a` one.
 
 Run the tests (they execute against the real bundled dictionary):
 
