@@ -70,14 +70,14 @@ object RekhtaSource {
         try {
             val word = parseWord(Jsoup.parse(fetchHtml(DICTIONARY_URL), DICTIONARY_URL))
             if (word == null) {
-                WidgetPrefs.storeFailure(context, FailureReason.MARKUP)
+                WidgetPrefs.storeWordFailure(context, FailureReason.MARKUP)
                 Log.w(TAG, "Rekhta word markup no longer matches the expected selectors")
             } else {
                 WidgetPrefs.storeRekhtaWord(context, word)
                 return word
             }
         } catch (error: Exception) {
-            WidgetPrefs.storeFailure(context, FailureReason.NETWORK)
+            WidgetPrefs.storeWordFailure(context, FailureReason.NETWORK)
             Log.w(TAG, "Rekhta word fetch failed", error)
         }
 
@@ -89,14 +89,14 @@ object RekhtaSource {
         try {
             val verse = parseVerse(Jsoup.parse(fetchHtml(POETRY_URL), POETRY_URL))
             if (verse == null) {
-                WidgetPrefs.storeFailure(context, FailureReason.MARKUP)
+                WidgetPrefs.storeVerseFailure(context, FailureReason.MARKUP)
                 Log.w(TAG, "Rekhta verse markup no longer matches the expected selectors")
             } else {
                 WidgetPrefs.storeVerse(context, verse)
                 return verse
             }
         } catch (error: Exception) {
-            WidgetPrefs.storeFailure(context, FailureReason.NETWORK)
+            WidgetPrefs.storeVerseFailure(context, FailureReason.NETWORK)
             Log.w(TAG, "Rekhta verse fetch failed", error)
         }
 

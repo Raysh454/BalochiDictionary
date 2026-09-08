@@ -17,9 +17,9 @@ import com.balochidictionary.balochi_dictionary.R
  */
 class VerseWidget : DailyWidgetProvider() {
 
-    override fun refreshData(context: Context, widgetIds: IntArray): Boolean {
-        if (!RekhtaSource.isVerseStale(context)) return false
-        return RekhtaSource.refreshVerse(context) != null
+    override fun scheduleRefresh(context: Context, widgetIds: IntArray) {
+        if (!RekhtaSource.isVerseStale(context)) return
+        WidgetRefreshWorker.enqueue(context, WidgetRefreshWorker.TARGET_VERSE)
     }
 
     override fun buildViews(context: Context, widgetId: Int): RemoteViews {
@@ -42,7 +42,7 @@ class VerseWidget : DailyWidgetProvider() {
 
     /** Says what is going on when there is no couplet to show yet. */
     private fun statusText(context: Context): String = context.getString(
-        when (WidgetPrefs.lastFailure(context)) {
+        when (WidgetPrefs.verseFailure(context)) {
             FailureReason.NETWORK -> R.string.widget_status_offline
             FailureReason.MARKUP -> R.string.widget_status_markup
             null -> R.string.widget_status_loading

@@ -37,13 +37,13 @@ class WordOfTheDayWidget : DailyWidgetProvider() {
     }
 
     /** Only fetches when a widget is actually showing the Rekhta side. */
-    override fun refreshData(context: Context, widgetIds: IntArray): Boolean {
+    override fun scheduleRefresh(context: Context, widgetIds: IntArray) {
         val wantsRekhta = widgetIds.any {
             WidgetPrefs.source(context, it) == WordSource.REKHTA
         }
-        if (!wantsRekhta || !RekhtaSource.isWordStale(context)) return false
+        if (!wantsRekhta || !RekhtaSource.isWordStale(context)) return
 
-        return RekhtaSource.refreshWord(context) != null
+        WidgetRefreshWorker.enqueue(context, WidgetRefreshWorker.TARGET_WORD)
     }
 
     override fun buildViews(context: Context, widgetId: Int): RemoteViews {
@@ -107,7 +107,7 @@ class WordOfTheDayWidget : DailyWidgetProvider() {
         }
 
         return context.getString(
-            when (WidgetPrefs.lastFailure(context)) {
+            when (WidgetPrefs.wordFailure(context)) {
                 FailureReason.NETWORK -> R.string.widget_status_offline
                 FailureReason.MARKUP -> R.string.widget_status_markup
                 null -> R.string.widget_status_loading

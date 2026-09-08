@@ -55,7 +55,8 @@ object WidgetPrefs {
     private const val KEY_VERSE_WORD = "verse_word"
     private const val KEY_VERSE_MEANING = "verse_meaning"
     private const val KEY_VERSE_DAY = "verse_day"
-    private const val KEY_LAST_FAILURE = "last_failure"
+    private const val KEY_WORD_FAILURE = "word_failure"
+    private const val KEY_VERSE_FAILURE = "verse_failure"
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -95,17 +96,33 @@ object WidgetPrefs {
     }
 
     // --- Why the last refresh produced nothing ------------------------------
+    //
+    // Tracked per source. One shared key meant a successful word fetch wiped
+    // the verse's recorded failure, so the verse widget fell back to its
+    // "fetching" placeholder and sat there instead of saying what went wrong.
 
-    fun storeFailure(context: Context, reason: FailureReason) {
-        prefs(context).edit().putString(KEY_LAST_FAILURE, reason.name).apply()
+    fun storeWordFailure(context: Context, reason: FailureReason) =
+        storeFailure(context, KEY_WORD_FAILURE, reason)
+
+    fun storeVerseFailure(context: Context, reason: FailureReason) =
+        storeFailure(context, KEY_VERSE_FAILURE, reason)
+
+    fun wordFailure(context: Context): FailureReason? =
+        readFailure(context, KEY_WORD_FAILURE)
+
+    fun verseFailure(context: Context): FailureReason? =
+        readFailure(context, KEY_VERSE_FAILURE)
+
+    private fun storeFailure(context: Context, key: String, reason: FailureReason) {
+        prefs(context).edit().putString(key, reason.name).apply()
     }
 
-    fun lastFailure(context: Context): FailureReason? =
-        prefs(context).getString(KEY_LAST_FAILURE, null)
+    private fun readFailure(context: Context, key: String): FailureReason? =
+        prefs(context).getString(key, null)
             ?.let { name -> FailureReason.entries.firstOrNull { it.name == name } }
 
-    private fun clearFailure(context: Context) {
-        prefs(context).edit().remove(KEY_LAST_FAILURE).apply()
+    private fun clearFailure(context: Context, key: String) {
+        prefs(context).edit().remove(key).apply()
     }
 
     // --- Rekhta word cache --------------------------------------------------
@@ -132,7 +149,7 @@ object WidgetPrefs {
             .putString(KEY_REKHTA_NOTE, word.note)
             .putLong(KEY_REKHTA_DAY, todayEpochDay())
             .apply()
-        clearFailure(context)
+        clearFailure(context, KEY_WORD_FAILURE)
     }
 
     // --- Verse cache --------------------------------------------------------
@@ -161,6 +178,6 @@ object WidgetPrefs {
             .putString(KEY_VERSE_MEANING, verse.meaning)
             .putLong(KEY_VERSE_DAY, todayEpochDay())
             .apply()
-        clearFailure(context)
+        clearFailure(context, KEY_VERSE_FAILURE)
     }
 }
