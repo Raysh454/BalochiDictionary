@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Nothing OS dark palette: a pure black surface, white type, one grey for
+  secondary text, and the Nothing red used sparingly as the only accent.
+-->
+<resources>
+    <color name="widget_background">#FF000000</color>
+    <color name="widget_stroke">#1FFFFFFF</color>
+    <color name="widget_text_primary">#FFFFFFFF</color>
+    <color name="widget_text_secondary">#FF8A8A8A</color>
+    <color name="widget_text_tertiary">#FF5C5C5C</color>
+    <color name="widget_accent">#FFD71921</color>
+</resources>

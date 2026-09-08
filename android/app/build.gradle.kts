@@ -47,3 +47,11 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Rekhta publishes no API, so the widgets parse their server-rendered
+    // pages. jsoup keeps that to real CSS selectors instead of regex.
+    implementation("org.jsoup:jsoup:1.18.3")
+
+    testImplementation("junit:junit:4.13.2")
+}
