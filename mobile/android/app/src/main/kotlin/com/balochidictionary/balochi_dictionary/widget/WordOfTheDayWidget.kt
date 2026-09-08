@@ -37,13 +37,13 @@ class WordOfTheDayWidget : DailyWidgetProvider() {
     }
 
     /** Only fetches when a widget is actually showing the Rekhta side. */
-    override fun scheduleRefresh(context: Context, widgetIds: IntArray) {
+    override fun refreshData(context: Context, widgetIds: IntArray): Boolean {
         val wantsRekhta = widgetIds.any {
             WidgetPrefs.source(context, it) == WordSource.REKHTA
         }
-        if (!wantsRekhta || !RekhtaSource.isWordStale(context)) return
+        if (!wantsRekhta || !RekhtaSource.isWordStale(context)) return false
 
-        WidgetRefreshWorker.enqueue(context, WidgetRefreshWorker.TARGET_WORD)
+        return RekhtaSource.refreshWord(context) != null
     }
 
     override fun buildViews(context: Context, widgetId: Int): RemoteViews {

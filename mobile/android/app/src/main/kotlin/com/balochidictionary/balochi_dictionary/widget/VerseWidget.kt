@@ -17,9 +17,9 @@ import com.balochidictionary.balochi_dictionary.R
  */
 class VerseWidget : DailyWidgetProvider() {
 
-    override fun scheduleRefresh(context: Context, widgetIds: IntArray) {
-        if (!RekhtaSource.isVerseStale(context)) return
-        WidgetRefreshWorker.enqueue(context, WidgetRefreshWorker.TARGET_VERSE)
+    override fun refreshData(context: Context, widgetIds: IntArray): Boolean {
+        if (!RekhtaSource.isVerseStale(context)) return false
+        return RekhtaSource.refreshVerse(context) != null
     }
 
     override fun buildViews(context: Context, widgetId: Int): RemoteViews {

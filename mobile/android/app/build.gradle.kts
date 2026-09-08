@@ -34,10 +34,6 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
-            )
         }
     }
 }
@@ -56,10 +52,6 @@ dependencies {
     // Rekhta publishes no API, so the widgets parse their server-rendered
     // pages. jsoup keeps that to real CSS selectors instead of regex.
     implementation("org.jsoup:jsoup:1.18.3")
-
-    // Widget network fetches run here rather than in the broadcast receiver,
-    // which gets only ~10s before the system may kill the process.
-    implementation("androidx.work:work-runtime-ktx:2.10.0")
 
     testImplementation("junit:junit:4.13.2")
 }
