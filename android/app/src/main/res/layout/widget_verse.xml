@@ -5,6 +5,10 @@
   Deliberately unadorned: no header, no tags, nothing but the sher and its
   poet, centred with generous leading. Nastaliq slopes steeply and needs far
   more line height than a Latin face, hence the large lineSpacingExtra.
+
+  The verse lines autosize rather than using a fixed size: a hemistich can be
+  short or long, so they render as large as will fit and step down only when a
+  line would otherwise be clipped.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/verse_root"
@@ -13,10 +17,10 @@
     android:background="@drawable/widget_background"
     android:orientation="vertical"
     android:gravity="center"
-    android:paddingLeft="20dp"
-    android:paddingRight="20dp"
-    android:paddingTop="16dp"
-    android:paddingBottom="16dp"
+    android:paddingLeft="18dp"
+    android:paddingRight="18dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp"
     android:contentDescription="@string/widget_verse_description">
 
     <TextView
@@ -24,38 +28,44 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fontFamily="@font/noto_nastaliq_urdu"
-        android:textSize="15sp"
-        android:lineSpacingExtra="8dp"
+        android:textSize="22sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="14sp"
+        android:autoSizeMaxTextSize="22sp"
+        android:autoSizeStepGranularity="1sp"
+        android:lineSpacingExtra="10dp"
         android:textColor="@color/widget_text_primary"
         android:gravity="center"
         android:textAlignment="center"
         android:textDirection="rtl"
-        android:maxLines="1"
-        android:ellipsize="end" />
+        android:maxLines="1" />
 
     <TextView
         android:id="@+id/verse_line_two"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="12dp"
         android:fontFamily="@font/noto_nastaliq_urdu"
-        android:textSize="15sp"
-        android:lineSpacingExtra="8dp"
+        android:textSize="22sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="14sp"
+        android:autoSizeMaxTextSize="22sp"
+        android:autoSizeStepGranularity="1sp"
+        android:lineSpacingExtra="10dp"
         android:textColor="@color/widget_text_primary"
         android:gravity="center"
         android:textAlignment="center"
         android:textDirection="rtl"
-        android:maxLines="1"
-        android:ellipsize="end" />
+        android:maxLines="1" />
 
     <TextView
         android:id="@+id/verse_poet"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="18dp"
         android:fontFamily="@font/noto_nastaliq_urdu"
-        android:textSize="10sp"
-        android:lineSpacingExtra="4dp"
+        android:textSize="13sp"
+        android:lineSpacingExtra="5dp"
         android:textColor="@color/widget_text_tertiary"
         android:gravity="center"
         android:textAlignment="center"
