@@ -2,15 +2,9 @@
 <!--
   2x2 word of the day. Tapping anywhere toggles Balochi <-> Rekhta Urdu.
 
-  The headword sits at the top and the meaning is docked to the bottom edge:
-  the weighted spacer between them absorbs whatever room is left over, and
-  collapses as the meaning grows upward on longer definitions.
-
-  The spacer is a TextView rather than a View or Space because RemoteViews
-  only inflates a fixed set of view classes, and plain View is not one of them.
-
   The small monospace label is kept because the two sources share the same
-  script, so it is the only way to tell at a glance which one is showing.
+  script, so it is the only way to tell at a glance which one is showing. It
+  is white like the rest of the type rather than an accent colour.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
@@ -55,31 +49,24 @@
         android:ellipsize="end" />
 
     <TextView
+        android:id="@+id/widget_meaning"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:textSize="12sp"
+        android:lineSpacingExtra="2dp"
+        android:textColor="@color/widget_text_secondary"
+        android:maxLines="4"
+        android:ellipsize="end" />
+
+    <TextView
         android:id="@+id/widget_note"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
         android:fontFamily="monospace"
         android:textSize="8sp"
         android:textColor="@color/widget_text_tertiary"
         android:maxLines="1"
-        android:ellipsize="end" />
-
-    <!-- Collapses to nothing once the meaning needs the room. -->
-    <TextView
-        android:id="@+id/widget_spacer"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:minHeight="6dp" />
-
-    <TextView
-        android:id="@+id/widget_meaning"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="12sp"
-        android:lineSpacingExtra="2dp"
-        android:textColor="@color/widget_text_secondary"
-        android:maxLines="5"
         android:ellipsize="end" />
 </LinearLayout>

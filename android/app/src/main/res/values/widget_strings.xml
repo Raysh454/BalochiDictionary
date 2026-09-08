@@ -4,6 +4,8 @@
     <string name="widget_label_urdu">URDU</string>
     <string name="widget_word_description">Word of the day. Tap to switch between Balochi and Urdu.</string>
     <string name="widget_verse_description">Rekhta couplet of the day.</string>
+    <!-- "aaj ka sher" - today's couplet. -->
+    <string name="widget_verse_heading">آج کا شعر</string>
     <string name="widget_error_network">Couldn\'t reach Rekhta. Tap to retry.</string>
     <string name="widget_error_dictionary">Dictionary unavailable.</string>
 </resources>
