@@ -19,7 +19,13 @@ class VerseWidget : DailyWidgetProvider() {
 
     override fun refreshData(context: Context, widgetIds: IntArray): Boolean {
         if (!RekhtaSource.isVerseStale(context)) return false
-        return RekhtaSource.refreshVerse(context) != null
+
+        RekhtaSource.refreshVerse(context)
+
+        // Redraw whether or not anything came back. A failed fetch still
+        // changes what should be on screen: the recorded reason has to replace
+        // the "fetching" placeholder, otherwise the widget sits on it forever.
+        return true
     }
 
     override fun buildViews(context: Context, widgetId: Int): RemoteViews {

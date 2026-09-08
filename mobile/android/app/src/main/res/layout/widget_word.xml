@@ -5,10 +5,8 @@
   The small monospace label is kept because the two sources share the same
   script, so it is the only way to tell at a glance which one is showing.
 
-  The headword keeps an RTL text direction, so its glyphs order correctly, but
-  is aligned to the view start like everything else. Left to itself a
-  right-to-left string self-aligns right, which left the word floating away
-  from the label, transliteration and gloss stacked down the left edge. It
+  The headword is right-aligned, as Arabic script is read and written. The
+  Latin transliteration and English gloss stay left-aligned with the label. It
   is white like the rest of the type rather than an accent colour.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -40,7 +38,7 @@
         android:textSize="25sp"
         android:textColor="@color/widget_text_primary"
         android:textDirection="rtl"
-        android:textAlignment="viewStart"
+        android:textAlignment="viewEnd"
         android:maxLines="1"
         android:ellipsize="end"
         android:includeFontPadding="false" />

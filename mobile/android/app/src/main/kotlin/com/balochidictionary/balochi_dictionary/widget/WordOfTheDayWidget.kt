@@ -43,7 +43,11 @@ class WordOfTheDayWidget : DailyWidgetProvider() {
         }
         if (!wantsRekhta || !RekhtaSource.isWordStale(context)) return false
 
-        return RekhtaSource.refreshWord(context) != null
+        RekhtaSource.refreshWord(context)
+
+        // Redraw either way, so a failure replaces the placeholder with its
+        // reason rather than leaving it stuck on "fetching".
+        return true
     }
 
     override fun buildViews(context: Context, widgetId: Int): RemoteViews {

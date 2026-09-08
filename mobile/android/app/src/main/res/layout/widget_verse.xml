@@ -10,6 +10,10 @@
   metrics and pushed the poet off the bottom of the widget. Giving them a
   weighted share means the heading and the attribution are measured first and
   always fit, and the couplet scales into whatever room is left.
+
+  The first line sits at the bottom of its share and the second at the top of
+  its own, so the two hemistichs meet in the middle. Centring both in their
+  slots pooled all the slack between them and split the couplet apart.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/verse_root"
@@ -49,7 +53,7 @@
         android:autoSizeMaxTextSize="20sp"
         android:autoSizeStepGranularity="1sp"
         android:textColor="@color/widget_text_verse"
-        android:gravity="center"
+        android:gravity="center_horizontal|bottom"
         android:textAlignment="center"
         android:textDirection="rtl"
         android:maxLines="1" />
@@ -65,7 +69,7 @@
         android:autoSizeMaxTextSize="20sp"
         android:autoSizeStepGranularity="1sp"
         android:textColor="@color/widget_text_verse"
-        android:gravity="center"
+        android:gravity="center_horizontal|top"
         android:textAlignment="center"
         android:textDirection="rtl"
         android:maxLines="1" />
