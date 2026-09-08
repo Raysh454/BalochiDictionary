@@ -57,6 +57,8 @@ object WidgetPrefs {
     private const val KEY_VERSE_DAY = "verse_day"
     private const val KEY_WORD_FAILURE = "word_failure"
     private const val KEY_VERSE_FAILURE = "verse_failure"
+    private const val KEY_WORD_DETAIL = "word_detail"
+    private const val KEY_VERSE_DETAIL = "verse_detail"
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -101,11 +103,22 @@ object WidgetPrefs {
     // the verse's recorded failure, so the verse widget fell back to its
     // "fetching" placeholder and sat there instead of saying what went wrong.
 
-    fun storeWordFailure(context: Context, reason: FailureReason) =
+    fun storeWordFailure(context: Context, reason: FailureReason, detail: String = "") {
         storeFailure(context, KEY_WORD_FAILURE, reason)
+        prefs(context).edit().putString(KEY_WORD_DETAIL, detail).apply()
+    }
 
-    fun storeVerseFailure(context: Context, reason: FailureReason) =
+    fun storeVerseFailure(context: Context, reason: FailureReason, detail: String = "") {
         storeFailure(context, KEY_VERSE_FAILURE, reason)
+        prefs(context).edit().putString(KEY_VERSE_DETAIL, detail).apply()
+    }
+
+    /** Short technical cause of the last failure, shown on the widget. */
+    fun wordFailureDetail(context: Context): String =
+        prefs(context).getString(KEY_WORD_DETAIL, "").orEmpty()
+
+    fun verseFailureDetail(context: Context): String =
+        prefs(context).getString(KEY_VERSE_DETAIL, "").orEmpty()
 
     fun wordFailure(context: Context): FailureReason? =
         readFailure(context, KEY_WORD_FAILURE)

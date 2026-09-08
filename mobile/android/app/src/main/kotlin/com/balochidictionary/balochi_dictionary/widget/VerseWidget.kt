@@ -29,7 +29,9 @@ class VerseWidget : DailyWidgetProvider() {
         if (verse == null) {
             views.setTextViewText(R.id.verse_line_one, statusText(context))
             views.setTextViewText(R.id.verse_line_two, "")
-            views.setTextViewText(R.id.verse_poet, "")
+            // The attribution line doubles as a diagnostic when there is
+            // nothing to attribute.
+            views.setTextViewText(R.id.verse_poet, WidgetPrefs.verseFailureDetail(context))
         } else {
             views.setTextViewText(R.id.verse_line_one, verse.lineOne)
             views.setTextViewText(R.id.verse_line_two, verse.lineTwo)

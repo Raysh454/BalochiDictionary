@@ -35,39 +35,13 @@ class WidgetRefreshJobService : JobService() {
     override fun onStartJob(params: JobParameters): Boolean {
         val target = params.extras.getString(KEY_TARGET) ?: TARGET_BOTH
 
-        EXECUTOR.execute {
-            var wanted = 0
-            var got = 0
-
-            try {
-                if (target == TARGET_WORD || target == TARGET_BOTH) {
-                    if (RekhtaSource.isWordStale(applicationContext)) {
-                        wanted++
-                        if (RekhtaSource.refreshWord(applicationContext) != null) got++
-                    }
-                }
-
-                if (target == TARGET_VERSE || target == TARGET_BOTH) {
-                    if (RekhtaSource.isVerseStale(applicationContext)) {
-                        wanted++
-                        if (RekhtaSource.refreshVerse(applicationContext) != null) got++
-                    }
-                }
-
-                // Redraw either way: a failure has to replace the placeholder
-                // with its recorded reason.
-                redraw(WordOfTheDayWidget::class.java)
-                redraw(VerseWidget::class.java)
-            } catch (error: Exception) {
-                Log.w(TAG, "Widget refresh job failed", error)
-            } finally {
-                // Ask to be run again only if something was wanted and nothing
-                // arrived; the scheduler applies its own backoff.
-                jobFinished(params, wanted > 0 && got == 0)
-            }
+        WidgetRefresher.refreshAsync(applicationContext) { succeeded ->
+            // Ask to be run again only if the fetch actually failed; the
+            // scheduler applies its own backoff.
+            jobFinished(params, !succeeded)
         }
 
-        // Work continues on the executor.
+        // Work continues on the refresher's executor.
         return true
     }
 

@@ -79,7 +79,7 @@ object RekhtaSource {
                 return word
             }
         } catch (error: Exception) {
-            WidgetPrefs.storeWordFailure(context, FailureReason.NETWORK)
+            WidgetPrefs.storeWordFailure(context, FailureReason.NETWORK, describe(error))
             Log.w(TAG, "Rekhta word fetch failed", error)
         }
 
@@ -98,11 +98,30 @@ object RekhtaSource {
                 return verse
             }
         } catch (error: Exception) {
-            WidgetPrefs.storeVerseFailure(context, FailureReason.NETWORK)
+            WidgetPrefs.storeVerseFailure(context, FailureReason.NETWORK, describe(error))
             Log.w(TAG, "Rekhta verse fetch failed", error)
         }
 
         return cachedVerse(context)
+    }
+
+    /**
+     * A short, readable cause for the widget to show.
+     *
+     * The exception type is what separates the possibilities that need
+     * different fixes: a name resolution failure means the app is being denied
+     * the network, a timeout means it was simply too slow, and anything else
+     * points at the request itself.
+     */
+    private fun describe(error: Throwable): String {
+        val root = generateSequence(error) { it.cause }.last()
+        return when (root) {
+            is java.net.UnknownHostException -> "no DNS (network blocked?)"
+            is java.net.SocketTimeoutException -> "timed out"
+            is java.net.ConnectException -> "connection refused"
+            is javax.net.ssl.SSLException -> "TLS error"
+            else -> root.javaClass.simpleName
+        }
     }
 
     /**

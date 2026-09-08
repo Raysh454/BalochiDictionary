@@ -70,8 +70,17 @@ class WordOfTheDayWidget : DailyWidgetProvider() {
             views.setViewVisibility(R.id.widget_script, View.GONE)
             views.setViewVisibility(R.id.widget_latin, View.GONE)
             views.setTextViewText(R.id.widget_meaning, statusText(context, source))
-            views.setTextViewText(R.id.widget_note, "")
-            views.setViewVisibility(R.id.widget_note, View.GONE)
+
+            val detail = if (source == WordSource.REKHTA) {
+                WidgetPrefs.wordFailureDetail(context)
+            } else {
+                ""
+            }
+            views.setTextViewText(R.id.widget_note, detail)
+            views.setViewVisibility(
+                R.id.widget_note,
+                if (detail.isEmpty()) View.GONE else View.VISIBLE,
+            )
         } else {
             views.setViewVisibility(R.id.widget_script, View.VISIBLE)
             views.setTextViewText(R.id.widget_script, word.script)
