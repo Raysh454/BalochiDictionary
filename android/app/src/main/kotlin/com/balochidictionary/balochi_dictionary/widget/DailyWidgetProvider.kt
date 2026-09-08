@@ -25,8 +25,19 @@ import java.util.concurrent.Executors
  */
 abstract class DailyWidgetProvider : AppWidgetProvider() {
 
-    /** Builds the views for one widget instance. Runs off the main thread. */
+    /**
+     * Builds the views for one widget instance from data already on disk.
+     * Must not touch the network: it runs before any refresh so the widget
+     * paints immediately.
+     */
     protected abstract fun buildViews(context: Context, widgetId: Int): RemoteViews
+
+    /**
+     * Fetches anything stale. Runs off the main thread after the cached views
+     * are already on screen. Returns true if new data landed and the widgets
+     * should be drawn again.
+     */
+    protected open fun refreshData(context: Context, widgetIds: IntArray): Boolean = false
 
     /** Action used for this provider's midnight alarm. */
     private val midnightAction: String
@@ -68,15 +79,32 @@ abstract class DailyWidgetProvider : AppWidgetProvider() {
         EXECUTOR.execute {
             try {
                 val manager = AppWidgetManager.getInstance(appContext)
-                for (widgetId in widgetIds) {
-                    try {
-                        manager.updateAppWidget(widgetId, buildViews(appContext, widgetId))
-                    } catch (error: Exception) {
-                        Log.w(TAG, "Widget $widgetId failed to render", error)
-                    }
+
+                // Paint what is already cached first, so the widget never sits
+                // blank or stale while a fetch is in flight.
+                draw(manager, appContext, widgetIds)
+
+                if (refreshData(appContext, widgetIds)) {
+                    draw(manager, appContext, widgetIds)
                 }
+            } catch (error: Exception) {
+                Log.w(TAG, "Widget update failed", error)
             } finally {
                 pendingResult.finish()
+            }
+        }
+    }
+
+    private fun draw(
+        manager: AppWidgetManager,
+        context: Context,
+        widgetIds: IntArray,
+    ) {
+        for (widgetId in widgetIds) {
+            try {
+                manager.updateAppWidget(widgetId, buildViews(context, widgetId))
+            } catch (error: Exception) {
+                Log.w(TAG, "Widget $widgetId failed to render", error)
             }
         }
     }

@@ -11,21 +11,23 @@ import com.balochidictionary.balochi_dictionary.R
 /**
  * 4x2 widget showing Rekhta's couplet of the day in Urdu, with its poet.
  *
- * The layout carries no header and no tags: the sher and the attribution are
- * the whole design. Tapping opens rekhta.org, where the couplet sits in
- * context.
+ * The layout carries no header beyond a small Urdu caption: the sher and the
+ * attribution are the whole design. Tapping opens rekhta.org, where the
+ * couplet sits in context.
  */
 class VerseWidget : DailyWidgetProvider() {
 
+    override fun refreshData(context: Context, widgetIds: IntArray): Boolean {
+        if (!RekhtaSource.isVerseStale(context)) return false
+        return RekhtaSource.refreshVerse(context) != null
+    }
+
     override fun buildViews(context: Context, widgetId: Int): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_verse)
-        val verse = RekhtaSource.verseOfTheDay(context)
+        val verse = RekhtaSource.cachedVerse(context)
 
         if (verse == null) {
-            views.setTextViewText(
-                R.id.verse_line_one,
-                context.getString(R.string.widget_error_network),
-            )
+            views.setTextViewText(R.id.verse_line_one, statusText(context))
             views.setTextViewText(R.id.verse_line_two, "")
             views.setTextViewText(R.id.verse_poet, "")
         } else {
@@ -37,6 +39,15 @@ class VerseWidget : DailyWidgetProvider() {
         views.setOnClickPendingIntent(R.id.verse_root, openRekhta(context))
         return views
     }
+
+    /** Says what is going on when there is no couplet to show yet. */
+    private fun statusText(context: Context): String = context.getString(
+        when (WidgetPrefs.lastFailure(context)) {
+            FailureReason.NETWORK -> R.string.widget_status_offline
+            FailureReason.MARKUP -> R.string.widget_status_markup
+            null -> R.string.widget_status_loading
+        },
+    )
 
     private fun openRekhta(context: Context): PendingIntent {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(RekhtaSource.POETRY_URL))

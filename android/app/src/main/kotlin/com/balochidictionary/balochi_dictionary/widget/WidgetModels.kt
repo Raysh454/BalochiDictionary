@@ -55,6 +55,7 @@ object WidgetPrefs {
     private const val KEY_VERSE_WORD = "verse_word"
     private const val KEY_VERSE_MEANING = "verse_meaning"
     private const val KEY_VERSE_DAY = "verse_day"
+    private const val KEY_LAST_FAILURE = "last_failure"
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -93,6 +94,20 @@ object WidgetPrefs {
         prefs(context).edit().remove(KEY_SOURCE_PREFIX + widgetId).apply()
     }
 
+    // --- Why the last refresh produced nothing ------------------------------
+
+    fun storeFailure(context: Context, reason: FailureReason) {
+        prefs(context).edit().putString(KEY_LAST_FAILURE, reason.name).apply()
+    }
+
+    fun lastFailure(context: Context): FailureReason? =
+        prefs(context).getString(KEY_LAST_FAILURE, null)
+            ?.let { name -> FailureReason.entries.firstOrNull { it.name == name } }
+
+    private fun clearFailure(context: Context) {
+        prefs(context).edit().remove(KEY_LAST_FAILURE).apply()
+    }
+
     // --- Rekhta word cache --------------------------------------------------
 
     fun cachedRekhtaWord(context: Context): DailyWord? {
@@ -117,6 +132,7 @@ object WidgetPrefs {
             .putString(KEY_REKHTA_NOTE, word.note)
             .putLong(KEY_REKHTA_DAY, todayEpochDay())
             .apply()
+        clearFailure(context)
     }
 
     // --- Verse cache --------------------------------------------------------
@@ -145,5 +161,6 @@ object WidgetPrefs {
             .putString(KEY_VERSE_MEANING, verse.meaning)
             .putLong(KEY_VERSE_DAY, todayEpochDay())
             .apply()
+        clearFailure(context)
     }
 }

@@ -2,6 +2,10 @@ package com.balochidictionary.balochi_dictionary.widget
 
 import android.content.Context
 import android.util.Log
+import java.io.InputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.zip.GZIPInputStream
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
@@ -10,10 +14,15 @@ import org.jsoup.nodes.Document
  *
  * Rekhta publishes no public API, so both come from the server-rendered
  * homepages. That makes this the fragile part of the widgets: if Rekhta
- * changes their markup the selectors below stop matching. Every parse step
- * therefore degrades to null rather than throwing, and the widgets fall back to
- * the last cached value, so a markup change shows stale content instead of an
- * error.
+ * changes their markup the selectors below stop matching. Every step degrades
+ * to a cached value rather than throwing, so a failure shows stale content
+ * instead of an error.
+ *
+ * The fetch deliberately uses [HttpURLConnection] rather than
+ * `Jsoup.connect()`. jsoup ships as a multi-release jar whose HTTP helpers sit
+ * under `META-INF/versions/9/`, and Android ignores versioned entries, so
+ * jsoup's own networking is not dependable here. jsoup is used purely as a
+ * parser, which is plain Java and safe on Android.
  *
  * Each page is fetched at most once per calendar day.
  */
@@ -29,56 +38,122 @@ object RekhtaSource {
      */
     const val POETRY_URL = "https://www.rekhta.org/?lang=ur"
 
-    private const val TIMEOUT_MS = 15_000
+    /**
+     * Kept well under the ten seconds or so a broadcast receiver gets before
+     * the system may kill it, even if both timeouts are hit on one request.
+     */
+    private const val CONNECT_TIMEOUT_MS = 4_000
+    private const val READ_TIMEOUT_MS = 5_000
+    private const val MAX_REDIRECTS = 3
+
     private const val USER_AGENT =
         "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) " +
             "Chrome/120.0.0.0 Mobile Safari/537.36"
 
+    // --- cached reads; these never touch the network ------------------------
+
+    fun cachedWord(context: Context): DailyWord? = WidgetPrefs.cachedRekhtaWord(context)
+
+    fun cachedVerse(context: Context): DailyVerse? = WidgetPrefs.cachedVerse(context)
+
+    fun isWordStale(context: Context): Boolean = !WidgetPrefs.isRekhtaWordFresh(context)
+
+    fun isVerseStale(context: Context): Boolean = !WidgetPrefs.isVerseFresh(context)
+
+    // --- network refreshes --------------------------------------------------
+
     /**
-     * Today's Rekhta word, fetching only if the cache is stale.
-     * Returns the cached value on any network or parse failure.
+     * Fetches today's word, storing it on success. Falls back to the cached
+     * value and records why it failed so the widget can say something useful.
      */
-    fun wordOfTheDay(context: Context): DailyWord? {
-        if (WidgetPrefs.isRekhtaWordFresh(context)) {
-            WidgetPrefs.cachedRekhtaWord(context)?.let { return it }
+    fun refreshWord(context: Context): DailyWord? {
+        try {
+            val word = parseWord(Jsoup.parse(fetchHtml(DICTIONARY_URL), DICTIONARY_URL))
+            if (word == null) {
+                WidgetPrefs.storeFailure(context, FailureReason.MARKUP)
+                Log.w(TAG, "Rekhta word markup no longer matches the expected selectors")
+            } else {
+                WidgetPrefs.storeRekhtaWord(context, word)
+                return word
+            }
+        } catch (error: Exception) {
+            WidgetPrefs.storeFailure(context, FailureReason.NETWORK)
+            Log.w(TAG, "Rekhta word fetch failed", error)
         }
 
-        val fetched = runCatching { parseWord(fetch(DICTIONARY_URL)) }
-            .onFailure { Log.w(TAG, "Rekhta word fetch failed", it) }
-            .getOrNull()
-
-        if (fetched != null) {
-            WidgetPrefs.storeRekhtaWord(context, fetched)
-            return fetched
-        }
-
-        return WidgetPrefs.cachedRekhtaWord(context)
+        return cachedWord(context)
     }
 
-    /** Today's Rekhta couplet, with the same cache-and-fallback behaviour. */
-    fun verseOfTheDay(context: Context): DailyVerse? {
-        if (WidgetPrefs.isVerseFresh(context)) {
-            WidgetPrefs.cachedVerse(context)?.let { return it }
+    /** Fetches today's couplet, with the same store-and-fall-back behaviour. */
+    fun refreshVerse(context: Context): DailyVerse? {
+        try {
+            val verse = parseVerse(Jsoup.parse(fetchHtml(POETRY_URL), POETRY_URL))
+            if (verse == null) {
+                WidgetPrefs.storeFailure(context, FailureReason.MARKUP)
+                Log.w(TAG, "Rekhta verse markup no longer matches the expected selectors")
+            } else {
+                WidgetPrefs.storeVerse(context, verse)
+                return verse
+            }
+        } catch (error: Exception) {
+            WidgetPrefs.storeFailure(context, FailureReason.NETWORK)
+            Log.w(TAG, "Rekhta verse fetch failed", error)
         }
 
-        val fetched = runCatching { parseVerse(fetch(POETRY_URL)) }
-            .onFailure { Log.w(TAG, "Rekhta verse fetch failed", it) }
-            .getOrNull()
-
-        if (fetched != null) {
-            WidgetPrefs.storeVerse(context, fetched)
-            return fetched
-        }
-
-        return WidgetPrefs.cachedVerse(context)
+        return cachedVerse(context)
     }
 
-    private fun fetch(url: String): Document =
-        Jsoup.connect(url)
-            .userAgent(USER_AGENT)
-            .timeout(TIMEOUT_MS)
-            .followRedirects(true)
-            .get()
+    /**
+     * Downloads a page as text.
+     *
+     * Redirects are followed by hand because [HttpURLConnection] will not
+     * follow them across protocols, and gzip is requested explicitly since
+     * these pages run to roughly 350 KB uncompressed.
+     */
+    internal fun fetchHtml(startUrl: String): String {
+        var url = URL(startUrl)
+
+        repeat(MAX_REDIRECTS + 1) {
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = CONNECT_TIMEOUT_MS
+                readTimeout = READ_TIMEOUT_MS
+                instanceFollowRedirects = false
+                setRequestProperty("User-Agent", USER_AGENT)
+                setRequestProperty("Accept", "text/html,application/xhtml+xml")
+                setRequestProperty("Accept-Encoding", "gzip")
+                setRequestProperty("Accept-Language", "ur,en;q=0.8")
+            }
+
+            try {
+                val status = connection.responseCode
+
+                if (status in 300..399) {
+                    val location = connection.getHeaderField("Location")
+                        ?: throw IllegalStateException("redirect $status carried no Location")
+                    url = URL(url, location)
+                    return@repeat
+                }
+
+                if (status != HttpURLConnection.HTTP_OK) {
+                    throw IllegalStateException("HTTP $status from $url")
+                }
+
+                val stream: InputStream =
+                    if (connection.contentEncoding.equals("gzip", ignoreCase = true)) {
+                        GZIPInputStream(connection.inputStream)
+                    } else {
+                        connection.inputStream
+                    }
+
+                return stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            } finally {
+                connection.disconnect()
+            }
+        }
+
+        throw IllegalStateException("too many redirects from $startUrl")
+    }
 
     /**
      * rekhtadictionary.com markup:
@@ -125,8 +200,8 @@ object RekhtaSource {
      * <div class="wordInSher">
      *   <div class='pMC' data-roman='off'>... <p data-l='1'>..</p><p data-l='2'>..</p></div>
      *   <div class='pMC' data-roman='on'> ... plain roman ... </div>
-     *   <div class="sherDetail"><a href="/poets/...">Bismil Sunsaharvi Gayawi</a></div>
      * </div>
+     * <div class="sherDetail"><a href="/poets/...">بسمل سنسہاروی گیاوی</a></div>
      * ```
      */
     internal fun parseVerse(document: Document): DailyVerse? {
@@ -159,4 +234,13 @@ object RekhtaSource {
             meaning = document.selectFirst("div.engMeaning h3")?.text()?.trim().orEmpty(),
         )
     }
+}
+
+/** Why the last Rekhta refresh produced nothing. */
+enum class FailureReason {
+    /** The request never completed: offline, blocked, or timed out. */
+    NETWORK,
+
+    /** The page loaded but no longer matches the selectors. */
+    MARKUP,
 }
