@@ -3,7 +3,12 @@
   2x2 word of the day. Tapping anywhere toggles Balochi <-> Rekhta Urdu.
 
   The small monospace label is kept because the two sources share the same
-  script, so it is the only way to tell at a glance which one is showing. It
+  script, so it is the only way to tell at a glance which one is showing.
+
+  The headword keeps an RTL text direction, so its glyphs order correctly, but
+  is aligned to the view start like everything else. Left to itself a
+  right-to-left string self-aligns right, which left the word floating away
+  from the label, transliteration and gloss stacked down the left edge. It
   is white like the rest of the type rather than an accent colour.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -34,6 +39,8 @@
         android:layout_marginTop="10dp"
         android:textSize="25sp"
         android:textColor="@color/widget_text_primary"
+        android:textDirection="rtl"
+        android:textAlignment="viewStart"
         android:maxLines="1"
         android:ellipsize="end"
         android:includeFontPadding="false" />

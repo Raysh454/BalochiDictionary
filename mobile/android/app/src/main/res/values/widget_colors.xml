@@ -7,6 +7,12 @@
 <resources>
     <color name="widget_background">#FF171C24</color>
     <color name="widget_text_primary">#FFFFFFFF</color>
+    <!--
+      Light type on a dark ground reads heavier than the same face dark on
+      light, so the verse uses a slightly held-back white. At Nastaliq
+      sizes pure white makes the strokes look bolder than the script is.
+    -->
+    <color name="widget_text_verse">#FFE6E9EF</color>
     <color name="widget_text_secondary">#FF9BA1AC</color>
     <color name="widget_text_tertiary">#FF7C838F</color>
 </resources>

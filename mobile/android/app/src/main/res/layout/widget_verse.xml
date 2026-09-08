@@ -2,13 +2,14 @@
 <!--
   4x2 Rekhta couplet of the day, set in Urdu.
 
-  Typeface is Mehr Nastaliq Web, the same face rekhta.org serves. Its steeper,
-  more calligraphic slope is what gives Rekhta's shers their look; Noto
-  Nastaliq Urdu is a flatter, more upright design meant for UI legibility.
+  Typeface is Mehr Nastaliq Web, the same face rekhta.org serves.
 
-  Nastaliq descends steeply across each line, so the lines carry far more
-  leading than a Latin face would need, and the verse autosizes: a short
-  hemistich renders large, a long one steps down instead of being clipped.
+  The two verse lines take their height from layout_weight rather than
+  wrap_content. That matters: autosize can only shrink text against a bounded
+  size, so with wrap_content the lines grew to Nastaliq's very tall natural
+  metrics and pushed the poet off the bottom of the widget. Giving them a
+  weighted share means the heading and the attribution are measured first and
+  always fit, and the couplet scales into whatever room is left.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/verse_root"
@@ -17,10 +18,10 @@
     android:background="@drawable/widget_background"
     android:orientation="vertical"
     android:gravity="center"
-    android:paddingLeft="18dp"
-    android:paddingRight="18dp"
-    android:paddingTop="12dp"
-    android:paddingBottom="12dp"
+    android:paddingLeft="24dp"
+    android:paddingRight="24dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp"
     android:contentDescription="@string/widget_verse_description">
 
     <TextView
@@ -28,8 +29,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fontFamily="@font/mehr_nastaliq_web"
-        android:textSize="11sp"
-        android:lineSpacingExtra="4dp"
+        android:textSize="10sp"
         android:textColor="@color/widget_text_tertiary"
         android:gravity="center"
         android:textAlignment="center"
@@ -40,16 +40,15 @@
     <TextView
         android:id="@+id/verse_line_one"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="6dp"
         android:fontFamily="@font/mehr_nastaliq_web"
-        android:textSize="22sp"
         android:autoSizeTextType="uniform"
-        android:autoSizeMinTextSize="14sp"
-        android:autoSizeMaxTextSize="22sp"
+        android:autoSizeMinTextSize="11sp"
+        android:autoSizeMaxTextSize="20sp"
         android:autoSizeStepGranularity="1sp"
-        android:lineSpacingExtra="10dp"
-        android:textColor="@color/widget_text_primary"
+        android:textColor="@color/widget_text_verse"
         android:gravity="center"
         android:textAlignment="center"
         android:textDirection="rtl"
@@ -58,16 +57,14 @@
     <TextView
         android:id="@+id/verse_line_two"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:fontFamily="@font/mehr_nastaliq_web"
-        android:textSize="22sp"
         android:autoSizeTextType="uniform"
-        android:autoSizeMinTextSize="14sp"
-        android:autoSizeMaxTextSize="22sp"
+        android:autoSizeMinTextSize="11sp"
+        android:autoSizeMaxTextSize="20sp"
         android:autoSizeStepGranularity="1sp"
-        android:lineSpacingExtra="10dp"
-        android:textColor="@color/widget_text_primary"
+        android:textColor="@color/widget_text_verse"
         android:gravity="center"
         android:textAlignment="center"
         android:textDirection="rtl"
@@ -77,10 +74,9 @@
         android:id="@+id/verse_poet"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
+        android:layout_marginTop="6dp"
         android:fontFamily="@font/mehr_nastaliq_web"
-        android:textSize="13sp"
-        android:lineSpacingExtra="5dp"
+        android:textSize="11sp"
         android:textColor="@color/widget_text_tertiary"
         android:gravity="center"
         android:textAlignment="center"
