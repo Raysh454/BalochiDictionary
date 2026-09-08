@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  4x2 Rekhta couplet of the day, set in Urdu.
+
+  Typeface is Mehr Nastaliq Web, the same face rekhta.org serves. Its steeper,
+  more calligraphic slope is what gives Rekhta's shers their look; Noto
+  Nastaliq Urdu is a flatter, more upright design meant for UI legibility.
+
+  Nastaliq descends steeply across each line, so the lines carry far more
+  leading than a Latin face would need, and the verse autosizes: a short
+  hemistich renders large, a long one steps down instead of being clipped.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/verse_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:paddingLeft="18dp"
+    android:paddingRight="18dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp"
+    android:contentDescription="@string/widget_verse_description">
+
+    <TextView
+        android:id="@+id/verse_heading"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/mehr_nastaliq_web"
+        android:textSize="11sp"
+        android:lineSpacingExtra="4dp"
+        android:textColor="@color/widget_text_tertiary"
+        android:gravity="center"
+        android:textAlignment="center"
+        android:textDirection="rtl"
+        android:maxLines="1"
+        android:text="@string/widget_verse_heading" />
+
+    <TextView
+        android:id="@+id/verse_line_one"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:fontFamily="@font/mehr_nastaliq_web"
+        android:textSize="22sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="14sp"
+        android:autoSizeMaxTextSize="22sp"
+        android:autoSizeStepGranularity="1sp"
+        android:lineSpacingExtra="10dp"
+        android:textColor="@color/widget_text_primary"
+        android:gravity="center"
+        android:textAlignment="center"
+        android:textDirection="rtl"
+        android:maxLines="1" />
+
+    <TextView
+        android:id="@+id/verse_line_two"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:fontFamily="@font/mehr_nastaliq_web"
+        android:textSize="22sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="14sp"
+        android:autoSizeMaxTextSize="22sp"
+        android:autoSizeStepGranularity="1sp"
+        android:lineSpacingExtra="10dp"
+        android:textColor="@color/widget_text_primary"
+        android:gravity="center"
+        android:textAlignment="center"
+        android:textDirection="rtl"
+        android:maxLines="1" />
+
+    <TextView
+        android:id="@+id/verse_poet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:fontFamily="@font/mehr_nastaliq_web"
+        android:textSize="13sp"
+        android:lineSpacingExtra="5dp"
+        android:textColor="@color/widget_text_tertiary"
+        android:gravity="center"
+        android:textAlignment="center"
+        android:textDirection="rtl"
+        android:maxLines="1"
+        android:ellipsize="end" />
+</LinearLayout>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Nothing OS dark widget surface: a dark desaturated slate rather than pure
+  black, with white type and two cooler greys stepping down for secondary and
+  attribution text. No accent colour - the surface carries the design.
+-->
+<resources>
+    <color name="widget_background">#FF171C24</color>
+    <color name="widget_text_primary">#FFFFFFFF</color>
+    <color name="widget_text_secondary">#FF9BA1AC</color>
+    <color name="widget_text_tertiary">#FF7C838F</color>
+</resources>
