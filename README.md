@@ -5,6 +5,31 @@
 Balochi Dictionary made using Go and [Wails](https://wails.io/docs/gettingstarted/building).
 Data scraped from: https://www.webonary.org/balochidictionary/browse/
 
+## Android app (`mobile/`)
+
+A Flutter port of this dictionary lives in [`mobile/`](mobile/). It ships the
+same SQLite dictionary as an asset and runs fully offline, adds a Word of the
+Day, and provides two Nothing OS styled home screen widgets. See
+[`mobile/README.md`](mobile/README.md) for how it maps onto the Go packages.
+
+Build an APK:
+
+```bash
+cd mobile
+flutter pub get
+flutter build apk --release --split-per-abi
+```
+
+The APKs land in `mobile/build/app/outputs/flutter-apk/`. Install the
+`arm64-v8a` one on any modern phone:
+
+```bash
+adb install mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+```
+
+Use `flutter build apk --release` instead for a single universal APK that
+carries all three ABIs (~53 MB against ~19 MB).
+
 ## Installation
 
 Releases are available to directly download.
