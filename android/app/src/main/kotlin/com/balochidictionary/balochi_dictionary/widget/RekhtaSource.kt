@@ -21,7 +21,13 @@ object RekhtaSource {
     private const val TAG = "RekhtaSource"
 
     const val DICTIONARY_URL = "https://rekhtadictionary.com/"
-    const val POETRY_URL = "https://www.rekhta.org/"
+
+    /**
+     * The Urdu edition of the homepage. It serves the identical DOM to the
+     * default page but with the couplet, the word and the poet in Urdu script
+     * rather than Roman transliteration, so the same selectors work.
+     */
+    const val POETRY_URL = "https://www.rekhta.org/?lang=ur"
 
     private const val TIMEOUT_MS = 15_000
     private const val USER_AGENT =
@@ -114,8 +120,8 @@ object RekhtaSource {
      * rekhta.org markup: the word of the day is illustrated by a couplet.
      *
      * ```
-     * <span class="h1-word">rasaa.ii</span>
-     * <div class="engMeaning"><p>means</p><h3>reach, access, ...</h3></div>
+     * <span class="h1-word">رسائی</span>
+     * <div class="engMeaning"><p>معنی</p><h3>پہنچ، باریابی، ...</h3></div>
      * <div class="wordInSher">
      *   <div class='pMC' data-roman='off'>... <p data-l='1'>..</p><p data-l='2'>..</p></div>
      *   <div class='pMC' data-roman='on'> ... plain roman ... </div>

@@ -1,67 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 4x2 Rekhta couplet of the day. Tapping opens rekhta.org. -->
+<!--
+  4x2 Rekhta couplet of the day, set in Urdu.
+
+  Deliberately unadorned: no header, no tags, nothing but the sher and its
+  poet, centred with generous leading. Nastaliq slopes steeply and needs far
+  more line height than a Latin face, hence the large lineSpacingExtra.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/verse_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
     android:orientation="vertical"
-    android:padding="16dp"
+    android:gravity="center"
+    android:paddingLeft="20dp"
+    android:paddingRight="20dp"
+    android:paddingTop="16dp"
+    android:paddingBottom="16dp"
     android:contentDescription="@string/widget_verse_description">
-
-    <TextView
-        android:id="@+id/verse_label"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:fontFamily="monospace"
-        android:textSize="8sp"
-        android:letterSpacing="0.12"
-        android:textColor="@color/widget_accent"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:text="@string/widget_label_verse" />
 
     <TextView
         android:id="@+id/verse_line_one"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="9dp"
-        android:textSize="14sp"
+        android:fontFamily="@font/noto_nastaliq_urdu"
+        android:textSize="15sp"
+        android:lineSpacingExtra="8dp"
         android:textColor="@color/widget_text_primary"
-        android:maxLines="2"
-        android:ellipsize="end"
-        android:lineSpacingMultiplier="1.1" />
+        android:gravity="center"
+        android:textAlignment="center"
+        android:textDirection="rtl"
+        android:maxLines="1"
+        android:ellipsize="end" />
 
     <TextView
         android:id="@+id/verse_line_two"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:textSize="14sp"
+        android:layout_marginTop="10dp"
+        android:fontFamily="@font/noto_nastaliq_urdu"
+        android:textSize="15sp"
+        android:lineSpacingExtra="8dp"
         android:textColor="@color/widget_text_primary"
-        android:maxLines="2"
-        android:ellipsize="end"
-        android:lineSpacingMultiplier="1.1" />
-
-    <TextView
-        android:id="@+id/verse_poet"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="6dp"
-        android:textSize="11sp"
-        android:textStyle="italic"
-        android:textColor="@color/widget_text_secondary"
+        android:gravity="center"
+        android:textAlignment="center"
+        android:textDirection="rtl"
         android:maxLines="1"
         android:ellipsize="end" />
 
     <TextView
-        android:id="@+id/verse_meaning"
+        android:id="@+id/verse_poet"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fontFamily="monospace"
-        android:textSize="8sp"
+        android:layout_marginTop="16dp"
+        android:fontFamily="@font/noto_nastaliq_urdu"
+        android:textSize="10sp"
+        android:lineSpacingExtra="4dp"
         android:textColor="@color/widget_text_tertiary"
+        android:gravity="center"
+        android:textAlignment="center"
+        android:textDirection="rtl"
         android:maxLines="1"
         android:ellipsize="end" />
 </LinearLayout>

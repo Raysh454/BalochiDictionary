@@ -40,24 +40,27 @@ class RekhtaSourceTest {
     }
 
     @Test
-    fun `parses the verse of the day with its poet`() {
+    fun `parses the verse of the day in Urdu with its poet`() {
         val verse = RekhtaSource.parseVerse(fixture("rekhta_org_home.html"))
 
         assertNotNull(verse)
         verse!!
-        assertEquals("baḳht-e-bad kī nā-rasā.ī kā gila kyā kījiye", verse.lineOne)
-        assertEquals("kārvāñ manzil pe hai aur duur haiñ manzil se ham", verse.lineTwo)
-        assertEquals("Bismil Sunsaharvi Gayawi", verse.poet)
-        assertEquals("rasaa.ii", verse.word)
-        assertEquals("reach, access, approach, influence, impact", verse.meaning)
+        assertEquals("بخت بد کی نارسائی کا گلہ کیا کیجئے", verse.lineOne)
+        assertEquals("کارواں منزل پہ ہے اور دور ہیں منزل سے ہم", verse.lineTwo)
+        assertEquals("بسمل سنسہاروی گیاوی", verse.poet)
+        assertEquals("رسائی", verse.word)
     }
 
     @Test
-    fun `prefers the diacritical couplet over the plain roman one`() {
-        val verse = RekhtaSource.parseVerse(fixture("rekhta_org_home.html"))
+    fun `verse text is Urdu script rather than transliteration`() {
+        val verse = RekhtaSource.parseVerse(fixture("rekhta_org_home.html"))!!
+        val arabic = Regex("[\u0600-\u06FF]")
 
-        // The page carries both; the roman variant would read "baKHt-e-bad".
-        assertTrue(verse!!.lineOne.contains("ḳh"))
+        // The Urdu edition also carries an empty roman block; picking the wrong
+        // one would give blank or Latin lines.
+        assertTrue("line one should be Urdu", arabic.containsMatchIn(verse.lineOne))
+        assertTrue("line two should be Urdu", arabic.containsMatchIn(verse.lineTwo))
+        assertTrue("poet should be Urdu", arabic.containsMatchIn(verse.poet))
     }
 
     @Test

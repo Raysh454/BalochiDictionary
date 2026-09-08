@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_label_balochi">BALOCHI · WORD OF THE DAY</string>
-    <string name="widget_label_urdu">URDU · REKHTA WORD OF THE DAY</string>
-    <string name="widget_label_verse">REKHTA · VERSE OF THE DAY</string>
+    <string name="widget_label_balochi">BALOCHI</string>
+    <string name="widget_label_urdu">URDU</string>
     <string name="widget_word_description">Word of the day. Tap to switch between Balochi and Urdu.</string>
     <string name="widget_verse_description">Rekhta couplet of the day.</string>
     <string name="widget_error_network">Couldn\'t reach Rekhta. Tap to retry.</string>

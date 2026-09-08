@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  2x2 word of the day. The whole surface is the toggle between the offline
-  Balochi dictionary and Rekhta's Urdu word.
+  2x2 word of the day. Tapping anywhere toggles Balochi <-> Rekhta Urdu.
+
+  The small monospace label is kept because the two sources share the same
+  script, so it is the only way to tell at a glance which one is showing. It
+  is white like the rest of the type rather than an accent colour.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
@@ -9,7 +12,7 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
     android:orientation="vertical"
-    android:padding="14dp"
+    android:padding="16dp"
     android:contentDescription="@string/widget_word_description">
 
     <TextView
@@ -17,9 +20,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fontFamily="monospace"
-        android:textSize="8sp"
-        android:letterSpacing="0.12"
-        android:textColor="@color/widget_accent"
+        android:textSize="9sp"
+        android:letterSpacing="0.18"
+        android:textColor="@color/widget_text_primary"
         android:maxLines="1"
         android:ellipsize="end"
         android:text="@string/widget_label_balochi" />
@@ -28,10 +31,9 @@
         android:id="@+id/widget_script"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:textSize="24sp"
+        android:layout_marginTop="10dp"
+        android:textSize="25sp"
         android:textColor="@color/widget_text_primary"
-        android:fontFamily="sans-serif"
         android:maxLines="1"
         android:ellipsize="end"
         android:includeFontPadding="false" />
@@ -40,9 +42,8 @@
         android:id="@+id/widget_latin"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="1dp"
+        android:layout_marginTop="3dp"
         android:textSize="11sp"
-        android:textStyle="italic"
         android:textColor="@color/widget_text_secondary"
         android:maxLines="1"
         android:ellipsize="end" />
@@ -52,10 +53,10 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="7dp"
+        android:layout_marginTop="8dp"
         android:textSize="12sp"
-        android:lineSpacingMultiplier="1.15"
-        android:textColor="@color/widget_text_primary"
+        android:lineSpacingExtra="2dp"
+        android:textColor="@color/widget_text_secondary"
         android:maxLines="4"
         android:ellipsize="end" />
 
